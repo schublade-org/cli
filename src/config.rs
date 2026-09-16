@@ -8,6 +8,9 @@ const DEFAULT_TOML: &str = include_str!("../schublade.toml");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    /// Path to catalog.toml. Relative paths resolve against the config file directory.
+    #[serde(default)]
+    pub catalog: Option<PathBuf>,
     #[serde(default)]
     pub server: ServerConfig,
     #[serde(default)]
@@ -140,6 +143,43 @@ impl AppConfig {
             self.server.port = port;
         }
     }
+
+    /// Resolve the catalog file to load.
+    ///
+    /// Order: `--catalog`, then `catalog` in schublade.toml (relative to that
+    /// file), then `catalog.toml` next to the config file, then `catalog.toml`
+    /// in the working directory. `None` means the bundled default catalog.
+    pub fn resolve_catalog_path(
+        &self,
+        cli_catalog: Option<&Path>,
+        config_path: Option<&Path>,
+    ) -> Result<Option<PathBuf>, String> {
+        if let Some(explicit) = cli_catalog {
+            if !explicit.exists() {
+                return Err(format!("catalog not found: {}", explicit.display()));
+            }
+            return Ok(Some(explicit.to_path_buf()));
+        }
+
+        let mut candidates = Vec::new();
+        if let Some(configured) = &self.catalog {
+            candidates.push(resolve_against(configured, config_path));
+        }
+        if let Some(config_file) = config_path {
+            if let Some(dir) = config_file.parent() {
+                candidates.push(dir.join("catalog.toml"));
+            }
+        }
+        candidates.push(PathBuf::from("catalog.toml"));
+
+        for candidate in candidates {
+            if candidate.exists() {
+                return Ok(Some(candidate));
+            }
+        }
+
+        Ok(None)
+    }
 }
 
 impl ThemeTrigger {
@@ -171,6 +211,36 @@ impl A11yRule {
             Self::Label => "Form fields must be labelled",
             Self::ControlName => "Controls must have an accessible name",
         }
+    }
+}
+
+fn resolve_against(path: &Path, config_path: Option<&Path>) -> PathBuf {
+    let joined = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        match config_path.and_then(Path::parent) {
+            Some(dir) if !dir.as_os_str().is_empty() => dir.join(path),
+            _ => path.to_path_buf(),
+        }
+    };
+    normalize_path(&joined)
+}
+
+fn normalize_path(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    if out.as_os_str().is_empty() {
+        PathBuf::from(".")
+    } else {
+        out
     }
 }
 
@@ -226,6 +296,50 @@ mod tests {
         assert_eq!(parsed.trigger, ThemeTrigger::ClassName);
         let parsed: ThemeOnly = toml::from_str("trigger = \"localStorage\"").unwrap();
         assert_eq!(parsed.trigger, ThemeTrigger::LocalStorage);
+    }
+
+    #[test]
+    fn catalog_path_prefers_cli() {
+        let dir = std::env::temp_dir().join("schublade-cli-catalog");
+        std::fs::create_dir_all(&dir).unwrap();
+        let cli_catalog = dir.join("from-cli.toml");
+        std::fs::write(&cli_catalog, "name = \"CLI\"\n").unwrap();
+        let config = AppConfig::default();
+        let resolved = config
+            .resolve_catalog_path(Some(&cli_catalog), None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(resolved, cli_catalog);
+    }
+
+    #[test]
+    fn catalog_path_is_relative_to_config_file() {
+        let dir = std::env::temp_dir().join("schublade-cfg-rel");
+        std::fs::create_dir_all(&dir).unwrap();
+        let catalog = dir.join("catalog.toml");
+        std::fs::write(&catalog, "name = \"Rel\"\n").unwrap();
+        let config_file = dir.join("schublade.toml");
+        std::fs::write(&config_file, "catalog = \"./catalog.toml\"\n").unwrap();
+
+        let (config, path) = AppConfig::load(Some(&config_file)).unwrap();
+        let resolved = config
+            .resolve_catalog_path(None, path.as_deref())
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            resolved.canonicalize().unwrap(),
+            catalog.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    fn missing_cli_catalog_errors() {
+        let config = AppConfig::default();
+        let missing = PathBuf::from("/tmp/schublade-does-not-exist-catalog.toml");
+        let error = config
+            .resolve_catalog_path(Some(&missing), None)
+            .unwrap_err();
+        assert!(error.contains("catalog not found"));
     }
 
     #[derive(Deserialize)]
