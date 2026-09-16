@@ -28,6 +28,8 @@ jobs:
             target: x86_64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
 
@@ -39,25 +41,33 @@ jobs:
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Package
         shell: bash
         run: |
           set -euo pipefail
           version="$(node -p "require('./package.json').version")"
-          archive="schublade-v${version}-${{ matrix.target }}.tar.gz"
-          mkdir -p dist
           if [ -f "target/${{ matrix.target }}/release/schublade.exe" ]; then
             bin="target/${{ matrix.target }}/release/schublade.exe"
           else
             bin="target/${{ matrix.target }}/release/schublade"
           fi
+          mkdir -p dist
+          archive="schublade-v${version}-${{ matrix.target }}.tar.gz"
           tar -C "$(dirname "$bin")" -czf "dist/${archive}" "$(basename "$bin")"
-          echo "Built dist/${archive}"
+          node npm/scripts/pack-platform.js \
+            --target "${{ matrix.target }}" \
+            --bin "$bin" \
+            --out dist/npm-pkg
+          echo "Built dist/${archive} and dist/npm-pkg"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
-          path: dist/*.tar.gz
+          path: dist
 
   publish:
     name: GitHub Release + npm
@@ -70,8 +80,12 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: dist
-          merge-multiple: true
+          path: artifacts
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Create GitHub Release
         env:
@@ -90,20 +104,31 @@ jobs:
             echo "::error::Git tag ${tag} does not match package.json / Cargo.toml version ${version}."
             exit 1
           fi
-          gh release create "$tag" dist/*.tar.gz \
+          mkdir -p release-assets
+          find artifacts -name 'schublade-v*.tar.gz' -exec cp {} release-assets/ \;
+          gh release create "$tag" release-assets/*.tar.gz \
             --title "schublade ${tag}" \
-            --notes "Prebuilt CLI binaries for npm \`npx schublade\`. Archives are named schublade-${tag}-<rust-target>.tar.gz." \
+            --notes "npm installs the matching @schublade/cli-<os>-<arch> optional dependency (the binary ships inside that package). Tarballs here are a convenience for non-npm installs." \
             --latest
 
-      - name: Publish npm package
+      - name: Publish npm packages
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${NPM_TOKEN}" ]; then
-            echo "::notice::NPM_TOKEN is not set. GitHub Release assets are up; publish later with npm publish."
-            echo "Add an npm automation token as repository secret NPM_TOKEN to publish on the next tag."
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::notice::NPM_TOKEN is not set. GitHub Release assets are up; publish later with platform packages first, then the root schublade package."
+            echo "Add an npm automation token as repository secret NPM_TOKEN. The token must publish schublade and the @schublade org."
             exit 0
           fi
-          npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          shopt -s nullglob
+          packages=(artifacts/*/npm-pkg)
+          if [ "${#packages[@]}" -eq 0 ]; then
+            echo "::error::No platform packages found under artifacts/*/npm-pkg"
+            exit 1
+          fi
+          for pkg in "${packages[@]}"; do
+            echo "Publishing ${pkg} ($(node -p "require('./${pkg}/package.json').name"))"
+            npm publish "${pkg}" --access public
+          done
           npm publish --access public

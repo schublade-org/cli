@@ -7,16 +7,22 @@
     "schublade": "npm/bin/schublade.js"
   },
   "scripts": {
-    "postinstall": "node npm/install.js",
-    "test:npm": "node npm/test/platform.test.js && node npm/test/resolve.test.js"
+    "test:npm": "node npm/test/platform.test.js && node npm/test/resolve.test.js && node npm/test/cargo.test.js && node npm/test/pack-platform.test.js && node npm/test/bin-integration.test.js"
   },
   "files": [
     "npm/bin",
-    "npm/install.js",
     "npm/lib",
     "README.md",
     "LICENSE"
   ],
+  "optionalDependencies": {
+    "@schublade/cli-darwin-arm64": "0.1.0",
+    "@schublade/cli-darwin-x64": "0.1.0",
+    "@schublade/cli-linux-arm64": "0.1.0",
+    "@schublade/cli-linux-x64": "0.1.0",
+    "@schublade/cli-win32-arm64": "0.1.0",
+    "@schublade/cli-win32-x64": "0.1.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/schublade-org/schublade.git"
