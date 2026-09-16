@@ -25,6 +25,10 @@ pub struct ServeArgs {
     #[arg(short, long)]
     pub config: Option<std::path::PathBuf>,
 
+    /// Path to catalog.toml (overrides the path in schublade.toml)
+    #[arg(long)]
+    pub catalog: Option<std::path::PathBuf>,
+
     /// Bind address
     #[arg(long)]
     pub host: Option<String>,
@@ -38,6 +42,7 @@ impl Default for ServeArgs {
     fn default() -> Self {
         Self {
             config: None,
+            catalog: None,
             host: None,
             port: None,
         }
