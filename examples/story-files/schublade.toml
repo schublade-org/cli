@@ -1,0 +1,24 @@
+# Stories live next to the components. catalog.toml is only the name fallback.
+name = "Story files"
+catalog = "./catalog.toml"
+stories = "./components"
+
+[server]
+host = "0.0.0.0"
+port = 47308
+
+[theme]
+trigger = "data-attribute"
+key = "data-theme"
+light = "light"
+dark = "dark"
+
+[a11y]
+enabled = true
+rules = [
+  "image-alt",
+  "button-name",
+  "link-name",
+  "label",
+  "control-name",
+]

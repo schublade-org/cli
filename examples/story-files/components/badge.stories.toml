@@ -1,0 +1,21 @@
+title = "Components/Badge"
+description = "A compact status label for counts, states, and metadata."
+component = "./badge.html"
+code = """<Badge tone="{{tone}}">{{label}}</Badge>"""
+
+[args]
+tone = "neutral"
+label = "In review"
+
+[argTypes.tone]
+control = "select"
+name = "Tone"
+options = [
+  { value = "neutral", label = "Neutral" },
+  { value = "accent", label = "Accent" },
+  { value = "warning", label = "Warning" },
+]
+
+[argTypes.label]
+control = "text"
+name = "Label"
