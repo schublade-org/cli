@@ -7,6 +7,7 @@ mod csf;
 mod render;
 mod server;
 mod stories;
+mod watch;
 
 use clap::Parser;
 use cli::{Cli, Command};

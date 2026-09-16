@@ -1,35 +1,30 @@
 # Examples
 
-Each folder is a real workshop: its own `schublade.toml` and, usually, `catalog.toml`. From the example directory the scripts invoke the **repo-root CLI** — not a special demo mode.
+Each folder is a real workshop: its own `schublade.toml` and, usually, `catalog.toml`.
+
+On a standalone mirror (`schublade-org/examples-<name>`), use the published npm CLI — no Cargo, no monorepo:
 
 ```bash
-cd examples/empty-catalog
-cargo run --manifest-path ../../Cargo.toml -- serve --config ./schublade.toml
+npx schublade serve --config ./schublade.toml
+npx schublade build --config ./schublade.toml --out ./dist
 # or
 ./run.sh
 ```
 
-`--config` loads the example config. Paths in that file (`catalog`, `stories`) are resolved relative to the config, so this also works from the repo root:
+Inside **schublade-org/schublade**, `./run.sh` / `./build.sh` fall back to `cargo run --manifest-path ../../Cargo.toml` so local CLI changes apply. You can still call the npm CLI from the repo root after `npm install`:
 
 ```bash
-cargo run -- serve --config examples/overflow/schublade.toml
-cargo run -- serve --config examples/story-files/schublade.toml
+npx schublade serve --config examples/overflow/schublade.toml
+npx schublade serve --config examples/story-files/schublade.toml
 ```
 
-`--catalog` and `--stories` override the paths in the config if you need to point at a file or directory directly.
+`--config` loads the example config. Paths in that file (`catalog`, `stories`) are resolved relative to the config.
 
-Build a portable static site for an example (no server at runtime):
+`bash examples/build-all.sh` writes `dist/examples/<name>/` using the monorepo Cargo CLI. Point a Vercel (or any static) project at that folder.
 
-```bash
-cd examples/story-files
-cargo run --manifest-path ../../Cargo.toml -- build --config ./schublade.toml --out ./dist
-# or
-./build.sh
-```
+CI mirrors each folder to `schublade-org/examples-<NAME>` (see the root README, **Example repo sync**). `examples/` here is the source of truth.
 
-`bash examples/build-all.sh` writes `dist/examples/<name>/` for every example. Point a Vercel (or any static) project at that folder.
-
-The default Aarau catalog at the repo root is unchanged. Use `cargo run -- serve` for that.
+The default Aarau catalog at the repo root is unchanged. Use `npx schublade serve` or `cargo run -- serve` for that.
 
 | Example | What it exercises | Port |
 | --- | --- | --- |

@@ -4,16 +4,18 @@ version = "0.1.0"
 edition = "2021"
 description = "A Storybook-like component workshop served from a Rust CLI"
 license = "MIT"
-repository = "https://github.com/iduuck/schublade"
+repository = "https://github.com/schublade-org/schublade"
 
 [dependencies]
 axum = "0.8"
 clap = { version = "4", features = ["derive"] }
+futures-util = "0.3.34"
 mime_guess = "2"
+notify = "8"
 rust-embed = "8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
 toml = "0.8"
 tower-http = { version = "0.6", features = ["trace"] }
 tracing = "0.1"
