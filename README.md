@@ -6,31 +6,55 @@ This is a POC/MVP. Feature parity with Storybook is not a goal. There is no plug
 
 The bundled demo catalog is **Aarau Designsystem**: left story nav, an isolated center canvas, right-hand controls, and Code Usage under the preview.
 
+## Install
+
+The CLI is a Rust binary wrapped for npm. Consumers need **npm** (or another Node 18+ package runner). They do not add a JS toolchain, bundler, or Rust to the catalog repo.
+
+```bash
+npx schublade serve
+npx schublade build
+```
+
+`npx` downloads the `schublade` package. `postinstall` fetches the matching prebuilt binary from the GitHub Release for this version (`schublade-vX.Y.Z-<rust-target>.tar.gz`). No compile step.
+
+```bash
+npm install -g schublade
+schublade serve --config ./schublade.toml
+```
+
+Supported prebuilt targets: macOS (arm64, x64), Linux glibc (x64, arm64), Windows x64. Alpine/musl is not supported.
+
+From this repository, `npm install` builds with Cargo when Release assets are missing (`SCHUBLADE_SKIP_DOWNLOAD=1` forces that path). `SCHUBLADE_BINARY=/path/to/schublade` overrides the downloaded binary.
+
 ## Run
 
 ```bash
-cargo run -- serve
+npx schublade serve
+npx schublade serve --port 47291
+npx schublade serve --config ./schublade.toml
+npx schublade serve --config ./schublade.toml --catalog ./catalog.toml
+npx schublade serve --config ./schublade.toml --stories ./components
 ```
 
-The workshop listens on `http://127.0.0.1:47291` by default (`0.0.0.0:47291` so it is reachable in this environment).
+The workshop listens on `http://127.0.0.1:47291` by default (`0.0.0.0:47291` so it is reachable in this environment). `schublade` with no subcommand also starts the server.
+
+`serve` watches the resolved `schublade.toml`, `catalog.toml`, and stories/component tree. Catalog and story discovery reload in place — the HTTP server stays up. The workshop UI picks up the new catalog over `/api/events` (or `/api/generation` if EventSource is missing) and re-renders the iframe. Changing bind host/port in the config does not rebind; restart for that.
+
+When hacking on the CLI itself:
 
 ```bash
-cargo run -- serve --port 47291
+cargo run -- serve
 cargo run -- serve --config ./schublade.toml
-cargo run -- serve --config ./schublade.toml --catalog ./catalog.toml
-cargo run -- serve --config ./schublade.toml --stories ./components
 ```
-
-`schublade` with no subcommand also starts the server.
 
 ## Static build
 
 Write a self-contained HTML workshop that runs without the Rust server. Controls, theme, and a11y keep working — rendering happens in the browser.
 
 ```bash
-cargo run -- build
-cargo run -- build --out dist
-cargo run -- build --config examples/story-files/schublade.toml --out dist/story-files
+npx schublade build
+npx schublade build --out dist
+npx schublade build --config examples/story-files/schublade.toml --out dist/story-files
 ```
 
 The folder contains `index.html` (catalog baked in), `preview.html`, CSS/JS (including React for JSX stories), `bootstrap.json`, and a small `vercel.json`. Hash routes (`#/button`) do not need SPA rewrites.
@@ -117,20 +141,75 @@ catalog = "./catalog.toml"  # optional fallback
 
 ## Examples
 
-Edge-case catalogs live under [`examples/`](examples/). They are real configs, not an in-root demo mode. From an example directory, invoke the **repo-root CLI**:
+Edge-case catalogs live under [`examples/`](examples/). They are real configs, not an in-root demo mode.
 
 ```bash
 cd examples/empty-catalog
-cargo run --manifest-path ../../Cargo.toml -- serve --config ./schublade.toml
+npx schublade serve --config ./schublade.toml
+# or
+./run.sh
 ```
 
-Each example has a `run.sh` that does the same thing, and `build.sh` where a static export is useful. `--config` loads that folder’s `schublade.toml`; the `catalog` and `stories` paths in the file are resolved next to it.
+Each `run.sh` / `build.sh` uses **`npx schublade`** when the folder is a standalone checkout (the mirrored `schublade-org/examples-<name>` repos). Inside this monorepo they fall back to `cargo run --manifest-path ../../Cargo.toml` so local CLI changes apply. `--config` loads that folder’s `schublade.toml`; `catalog` and `stories` paths are resolved next to it.
 
-The root Aarau catalog stays the default demo (`cargo run -- serve`). See [`examples/README.md`](examples/README.md).
+The root Aarau catalog stays the default demo (`npx schublade serve` / `cargo run -- serve`). See [`examples/README.md`](examples/README.md).
+
+## Example repo sync
+
+`examples/` in **schublade-org/schublade** is the source of truth. On push to `main` (and via *Actions → Sync example repos*), [`.github/workflows/sync-examples.yml`](.github/workflows/sync-examples.yml) mirrors each folder:
+
+| Folder | Mirror |
+| --- | --- |
+| `examples/story-files` | [schublade-org/examples-story-files](https://github.com/schublade-org/examples-story-files) |
+| `examples/empty-catalog` | [schublade-org/examples-empty-catalog](https://github.com/schublade-org/examples-empty-catalog) |
+| … | `schublade-org/examples-<NAME>` |
+
+The job **creates** a public repo if it does not exist, then force-pushes the folder contents to `main`.
+
+### Secret: `EXAMPLES_SYNC_TOKEN`
+
+The workflow reads **only** the repository secret named `EXAMPLES_SYNC_TOKEN`. If that secret is missing or empty, the job **fails immediately** with an error that names the secret.
+
+Do **not** store the PAT as `GITHUB_TOKEN`. GitHub Actions already injects an automatic token under that name; a custom secret called `GITHUB_TOKEN` is ignored, and the automatic token cannot create or push other repositories in `schublade-org`.
+
+Create a personal access token (the token owner must be allowed to create repositories in `schublade-org`), then add it at **Settings → Secrets and variables → Actions → New repository secret** with the exact name `EXAMPLES_SYNC_TOKEN`.
+
+**Classic PAT**
+
+| Scope | Why |
+| --- | --- |
+| `repo` | Create repositories in the org and force-push `examples-*`. `public_repo` is not enough to create repositories. |
+
+**Fine-grained PAT**
+
+| Field | Value |
+| --- | --- |
+| Resource owner | `schublade-org` |
+| Repository access | **All repositories** (must include future `examples-*` repos) |
+| Administration | Read and write (create repos) |
+| Contents | Read and write (push) |
+| Metadata | Read (granted automatically) |
+
+Org approval may be required before a fine-grained token can act on `schublade-org`.
+
+Do not commit a token. This repository does not invent or ship credentials.
+
+## Publish the npm package
+
+Keep `package.json` and `Cargo.toml` versions in lockstep. Tag the same version:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds platform archives, attaches them to a GitHub Release, and publishes to npm when **`NPM_TOKEN`** is set (npm automation token). If `NPM_TOKEN` is absent, the Release still goes up; publish later with `npm publish --access public` from the repo root.
+
+The installer downloads `https://github.com/schublade-org/schublade/releases/download/v<version>/schublade-v<version>-<target>.tar.gz`.
 
 ## What you get
 
-- **CLI + server** — `clap` + `axum`. The workshop UI is embedded in the binary. `schublade build` writes the same workshop as static HTML.
+- **CLI + server** — `clap` + `axum`, published as the `schublade` npm package. The workshop UI is embedded in the binary. `npx schublade serve` hot-reloads catalog and stories; `npx schublade build` writes the same workshop as static HTML.
 - **Story discovery** — `*.stories.jsx` / `*.stories.js` next to components (TOML still works), plus `catalog.toml` as fallback.
 - **React preview** — `/api/render` returns the imported component source and current props. The iframe mounts React from vendored UMD plus a small local JSX transform. No npm toolchain in the consumer repo.
 - **Isolated iframe preview** — the canvas is a `sandbox="allow-scripts"` iframe. The shell talks to it with `postMessage` only.
@@ -157,7 +236,7 @@ enabled = true
 rules = ["image-alt", "button-name", "link-name", "label", "control-name"]
 ```
 
-A relative `catalog` or `stories` path is resolved against the config file’s directory. Restart the server after edits. The Avatar group story uses a built-in renderer; HTML stories interpolate `{{control}}` tokens.
+A relative `catalog` or `stories` path is resolved against the config file’s directory. `serve` reloads catalog, stories, and theme/a11y config in place; host/port changes still need a restart. The Avatar group story uses a built-in renderer; HTML stories interpolate `{{control}}` tokens.
 
 An empty catalog (name only, no `[[stories]]` and no story files) is valid — the workshop shows an empty state instead of refusing to start.
 
@@ -172,11 +251,14 @@ An empty catalog (name only, no `[[stories]]` and no story files) is valid — t
 
 ## Develop
 
-Rust 1.85 or newer (`rust-toolchain.toml` pins 1.85.0).
+Rust 1.85 or newer (`rust-toolchain.toml` pins 1.85.0). Node 18+ is only required to exercise the npm wrapper.
 
 ```bash
 cargo test
+npm run test:npm
 cargo run -- serve
 cargo run -- serve --config examples/story-files/schublade.toml
 cargo run -- build --config examples/story-files/schublade.toml --out dist/story-files
+SCHUBLADE_SKIP_DOWNLOAD=1 npm install
+npx schublade --help
 ```

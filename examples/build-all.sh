@@ -4,6 +4,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 out="${1:-$root/dist/examples}"
 cd "$root"
 
+# Monorepo helper: always the local crate so a release binary is not required.
 for config in "$root"/examples/*/schublade.toml; do
   name="$(basename "$(dirname "$config")")"
   dest="$out/$name"

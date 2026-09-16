@@ -1,0 +1,16 @@
+target
+dist
+examples
+src
+ui
+catalog.toml
+schublade.toml
+Cargo.toml
+Cargo.lock
+rust-toolchain.toml
+.cursor
+.github
+npm/test
+npm/vendor
+*.md
+!README.md
