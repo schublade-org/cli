@@ -77,10 +77,12 @@
     }
   });
 
-  boot().catch((error) => {
-    showStatus("Could not load the workshop catalog.");
-    console.error(error);
-  });
+  boot()
+    .then(() => listenForReload())
+    .catch((error) => {
+      showStatus("Could not load the workshop catalog.");
+      console.error(error);
+    });
 
   async function loadBootstrap() {
     const injected = document.getElementById("schublade-bootstrap");
@@ -127,11 +129,80 @@
     await selectStory(initial, true);
   }
 
+  function listenForReload() {
+    if (state.static) {
+      return;
+    }
+    if (typeof EventSource !== "undefined") {
+      const events = new EventSource("/api/events");
+      events.addEventListener("reload", () => {
+        applyReload().catch((error) => console.error(error));
+      });
+      return;
+    }
+    pollGeneration();
+  }
+
+  async function pollGeneration() {
+    let generation = null;
+    for (;;) {
+      try {
+        const response = await fetch("/api/generation");
+        if (response.ok) {
+          const payload = await response.json();
+          if (generation !== null && payload.generation !== generation) {
+            await applyReload();
+          }
+          generation = payload.generation;
+        }
+      } catch (_error) {
+        /* server went away; retry */
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    }
+  }
+
+  async function applyReload() {
+    const previousId = state.storyId;
+    const previousValues = { ...state.values };
+    const next = await loadBootstrap();
+    state.bootstrap = next;
+    catalogName.textContent = next.catalog.name;
+    document.title = `${next.catalog.name} · Schublade`;
+    renderNav();
+    configurePreview();
+    const stories = next.catalog.stories;
+    if (!stories.length) {
+      showEmptyCatalog();
+      return;
+    }
+    setStoryNavEnabled(true);
+    const story = stories.find((item) => item.id === previousId) || stories[0];
+    state.storyId = story.id;
+    state.values = {};
+    for (const control of story.controls) {
+      const keep =
+        previousId === story.id && Object.prototype.hasOwnProperty.call(previousValues, control.id);
+      state.values[control.id] = keep ? previousValues[control.id] : control.default;
+    }
+    storyTitle.textContent = story.title;
+    storyDesc.textContent = story.description;
+    nav.querySelectorAll(".nav-item").forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.story === story.id);
+    });
+    renderControls(story);
+    const nextHash = `#/${story.id}`;
+    if (location.hash !== nextHash) {
+      history.replaceState(null, "", nextHash);
+    }
+    await refresh();
+  }
+
   function showEmptyCatalog() {
     setStoryNavEnabled(false);
     storyTitle.textContent = "No stories";
     storyDesc.textContent =
-      "This catalog is empty. Add *.stories.jsx / *.stories.js files or [[stories]] in catalog.toml and restart the server.";
+      "This catalog is empty. Add *.stories.jsx / *.stories.js files or [[stories]] in catalog.toml. The workshop reloads when those files change.";
     controlList.innerHTML = "";
     const empty = document.createElement("p");
     empty.className = "controls-empty";
