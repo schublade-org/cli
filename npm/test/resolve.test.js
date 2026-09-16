@@ -4,9 +4,8 @@ const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { envBinaryPath, resolveBinary, vendorBinaryPath } = require("../lib/resolve");
-
-assert.ok(vendorBinaryPath().endsWith("schublade") || vendorBinaryPath().endsWith("schublade.exe"));
+const { envBinaryPath, resolveBinary, resolvePlatformPackageBinary } = require("../lib/resolve");
+const { platformBinarySpecifier } = require("../lib/platform");
 
 const previous = process.env.SCHUBLADE_BINARY;
 try {
@@ -29,5 +28,27 @@ try {
     process.env.SCHUBLADE_BINARY = previous;
   }
 }
+
+const expectedSpecifier = platformBinarySpecifier();
+const resolved = resolvePlatformPackageBinary((id) => {
+  assert.strictEqual(id, expectedSpecifier);
+  return `/tmp/fake-node-modules/${id}`;
+});
+assert.strictEqual(resolved, `/tmp/fake-node-modules/${expectedSpecifier}`);
+
+assert.strictEqual(
+  resolvePlatformPackageBinary(() => {
+    throw new Error("MODULE_NOT_FOUND");
+  }),
+  null,
+);
+
+delete process.env.SCHUBLADE_BINARY;
+assert.strictEqual(
+  resolveBinary(() => {
+    throw new Error("MODULE_NOT_FOUND");
+  }),
+  null,
+);
 
 console.log("resolve tests passed");
