@@ -108,7 +108,7 @@
     setStoryNavEnabled(false);
     storyTitle.textContent = "No stories";
     storyDesc.textContent =
-      "This catalog is empty. Add [[stories]] blocks to catalog.toml and restart the server.";
+      "This catalog is empty. Add *.stories.toml files or [[stories]] in catalog.toml and restart the server.";
     controlList.innerHTML = "";
     const empty = document.createElement("p");
     empty.className = "controls-empty";
@@ -281,23 +281,18 @@
 
   async function refresh() {
     showStatus("Updating preview…");
-    try {
-      const response = await fetch("/api/render", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ story: state.storyId, values: state.values }),
-      });
-      if (!response.ok) {
-        throw new Error("render failed");
-      }
-      const payload = await response.json();
-      hideStatus();
-      codeBody.innerHTML = highlight(payload.code);
-      sendRender(payload.html);
-    } catch (error) {
-      showStatus("Could not render this story.");
-      console.error(error);
+    const response = await fetch("/api/render", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ story: state.storyId, values: state.values }),
+    });
+    if (!response.ok) {
+      throw new Error("render failed");
     }
+    const payload = await response.json();
+    hideStatus();
+    codeBody.innerHTML = highlight(payload.code);
+    sendRender(payload.html);
   }
 
   function sendRender(html) {
