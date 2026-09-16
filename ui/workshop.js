@@ -281,18 +281,23 @@
 
   async function refresh() {
     showStatus("Updating preview…");
-    const response = await fetch("/api/render", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ story: state.storyId, values: state.values }),
-    });
-    if (!response.ok) {
-      throw new Error("render failed");
+    try {
+      const response = await fetch("/api/render", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ story: state.storyId, values: state.values }),
+      });
+      if (!response.ok) {
+        throw new Error("render failed");
+      }
+      const payload = await response.json();
+      hideStatus();
+      codeBody.innerHTML = highlight(payload.code);
+      sendRender(payload.html);
+    } catch (error) {
+      showStatus("Could not render this story.");
+      console.error(error);
     }
-    const payload = await response.json();
-    hideStatus();
-    codeBody.innerHTML = highlight(payload.code);
-    sendRender(payload.html);
   }
 
   function sendRender(html) {
