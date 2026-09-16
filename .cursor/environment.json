@@ -1,0 +1,16 @@
+{
+  "name": "Schublade",
+  "install": "cargo build --locked",
+  "terminals": [
+    {
+      "name": "workshop-server",
+      "command": "cargo run --locked -- serve"
+    }
+  ],
+  "ports": [
+    {
+      "name": "workshop",
+      "port": 47291
+    }
+  ]
+}
