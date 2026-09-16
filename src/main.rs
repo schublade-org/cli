@@ -1,6 +1,9 @@
+mod assets;
+mod build;
 mod catalog;
 mod cli;
 mod config;
+mod csf;
 mod render;
 mod server;
 mod stories;
@@ -22,6 +25,12 @@ async fn main() {
     match command {
         Command::Serve(args) => {
             if let Err(error) = server::run(args).await {
+                eprintln!("schublade: {error}");
+                std::process::exit(1);
+            }
+        }
+        Command::Build(args) => {
+            if let Err(error) = build::run(args) {
                 eprintln!("schublade: {error}");
                 std::process::exit(1);
             }
