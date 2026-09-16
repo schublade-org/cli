@@ -348,7 +348,7 @@ fn json_arg_type(id: &str, value: &Value, path: &Path) -> Result<ArgTypeSpec, St
     };
     let name = object
         .get("name")
-            .or_else(|| object.get("label"))
+        .or_else(|| object.get("label"))
         .and_then(Value::as_str)
         .map(str::to_string);
     let options = match object.get("options") {
