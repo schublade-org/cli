@@ -8,11 +8,13 @@ Storybook-like CSF next to the real components. The root CLI walks `components/`
 `catalog.toml` is present as a name-only fallback.
 
 ```bash
+npx schublade serve --config ./schublade.toml
+npx schublade build --config ./schublade.toml --out ./dist
+# or
 ./run.sh
-# cargo run --manifest-path ../../Cargo.toml -- serve --config ./schublade.toml
-
 ./build.sh
-# writes ./dist — deploy that folder anywhere
 ```
+
+`./run.sh` / `./build.sh` call `npx schublade` on the standalone mirror. In the monorepo they fall back to `cargo run --manifest-path ../../Cargo.toml`.
 
 http://127.0.0.1:47308
