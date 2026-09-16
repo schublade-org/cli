@@ -1,0 +1,4 @@
+name = "Empty catalog"
+
+# Intentionally no [[stories]] — the workshop should stay up and show
+# the empty-catalog state instead of refusing to boot.
