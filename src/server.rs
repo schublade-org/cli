@@ -6,21 +6,17 @@ use axum::http::{header, StatusCode, Uri};
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use rust_embed::RustEmbed;
 use serde::Deserialize;
 use serde_json::Value;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
+use crate::assets::Assets;
 use crate::catalog::{Bootstrap, Catalog};
 use crate::cli::ServeArgs;
 use crate::config::AppConfig;
 use crate::render::render_story;
 use crate::stories;
-
-#[derive(RustEmbed)]
-#[folder = "ui/"]
-struct Assets;
 
 struct AppState {
     config: AppConfig,
@@ -187,13 +183,23 @@ async fn render(
     };
 
     match render_story(story, &request.values) {
-        Ok(rendered) => Json(serde_json::json!({
-            "html": rendered.html,
-            "code": rendered.code,
-            "title": story.title,
-            "description": story.description,
-        }))
-        .into_response(),
+        Ok(rendered) => {
+            let react = rendered.react.map(|react| {
+                serde_json::json!({
+                    "source": react.source,
+                    "exportName": react.export_name,
+                    "props": react.props,
+                })
+            });
+            Json(serde_json::json!({
+                "html": rendered.html,
+                "code": rendered.code,
+                "react": react,
+                "title": story.title,
+                "description": story.description,
+            }))
+            .into_response()
+        }
         Err(error) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({ "error": error })),
