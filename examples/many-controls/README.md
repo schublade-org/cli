@@ -1,0 +1,9 @@
+# Many controls
+
+A single Filter bar story with text, select, number, and boolean controls — enough rows to scroll the right rail. The root Aarau catalog stays small; this is the place to stress the panel.
+
+```bash
+./run.sh
+```
+
+http://127.0.0.1:47307

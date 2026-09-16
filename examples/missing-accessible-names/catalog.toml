@@ -1,0 +1,49 @@
+name = "Missing accessible names"
+
+[[stories]]
+id = "empty-button"
+title = "Empty button"
+section = "Names"
+description = "Visible click target, empty accessible name."
+code = """<button type=\"button\" />"""
+template = """
+<button class="btn" data-variant="secondary" data-size="md" type="button"></button>
+"""
+
+[[stories]]
+id = "icon-only"
+title = "Icon-only button"
+section = "Names"
+description = "A plus icon drawn in CSS. No text, aria-label, or title."
+code = """<IconButton />"""
+template = """
+<button class="icon-only" type="button"></button>
+"""
+
+[[stories]]
+id = "whitespace-link"
+title = "Whitespace link"
+section = "Names"
+description = "A link whose text is only spaces, so the accessible name trims to empty."
+code = """<a href=\"/account\">   </a>"""
+template = """
+<a class="example-link" href="/account">   </a>
+"""
+
+[[stories]]
+id = "untitled-search"
+title = "Untitled search"
+section = "Names"
+description = "Search input with a placeholder only — placeholder is accepted as a name. Toggle it off to trip control-name."
+code = """<input type=\"search\" placeholder=\"{{placeholder}}\" />"""
+template = """
+<div class="example-field">
+  <input type="search" placeholder="{{placeholder}}" />
+</div>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "placeholder"
+label = "Placeholder"
+default = ""

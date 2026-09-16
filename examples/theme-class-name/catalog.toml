@@ -1,0 +1,34 @@
+name = "Theme · class-name"
+
+[[stories]]
+id = "button"
+title = "Button"
+section = "Theme"
+description = "Toggle the sun/moon control. The preview sets class light or dark on <html>."
+code = """<Button variant=\"{{variant}}\">{{label}}</Button>"""
+template = """
+<div class="example-stack">
+  <button class="btn" data-variant="{{variant}}" data-size="md" type="button">{{label}}</button>
+  <span class="badge" data-tone="neutral">html.light / html.dark</span>
+</div>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Continue"
+
+[[stories.controls]]
+kind = "select"
+id = "variant"
+label = "Variant"
+default = "primary"
+
+[[stories.controls.options]]
+value = "primary"
+label = "Primary"
+
+[[stories.controls.options]]
+value = "secondary"
+label = "Secondary"

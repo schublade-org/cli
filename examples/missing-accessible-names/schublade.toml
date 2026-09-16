@@ -1,0 +1,20 @@
+# Controls that look complete but expose no accessible name.
+catalog = "./catalog.toml"
+
+[server]
+host = "0.0.0.0"
+port = 47303
+
+[theme]
+trigger = "data-attribute"
+key = "data-theme"
+light = "light"
+dark = "dark"
+
+[a11y]
+enabled = true
+rules = [
+  "button-name",
+  "link-name",
+  "control-name",
+]

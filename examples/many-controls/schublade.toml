@@ -1,0 +1,19 @@
+# One story with a full control panel — every control kind, many rows.
+catalog = "./catalog.toml"
+
+[server]
+host = "0.0.0.0"
+port = 47307
+
+[theme]
+trigger = "data-attribute"
+key = "data-theme"
+light = "light"
+dark = "dark"
+
+[a11y]
+enabled = true
+rules = [
+  "button-name",
+  "label",
+]

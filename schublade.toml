@@ -1,6 +1,10 @@
 # Schublade workshop configuration.
 # Consumers point the CLI at this file; no JavaScript toolchain is required.
 
+# Catalog next to this file is the default Aarau demo. Examples under
+# examples/ ship their own schublade.toml + catalog.toml and invoke this CLI.
+catalog = "./catalog.toml"
+
 [server]
 host = "0.0.0.0"
 port = 47291
