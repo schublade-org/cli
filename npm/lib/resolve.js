@@ -1,18 +1,7 @@
 "use strict";
 
 const fs = require("fs");
-const path = require("path");
-const { binaryFileName } = require("./platform");
-
-const PACKAGE_ROOT = path.resolve(__dirname, "..", "..");
-
-function vendorDir() {
-  return path.join(PACKAGE_ROOT, "npm", "vendor");
-}
-
-function vendorBinaryPath(platform = process.platform) {
-  return path.join(vendorDir(), binaryFileName(platform));
-}
+const { platformBinarySpecifier } = require("./platform");
 
 function envBinaryPath() {
   const fromEnv = process.env.SCHUBLADE_BINARY;
@@ -22,22 +11,24 @@ function envBinaryPath() {
   return null;
 }
 
-function resolveBinary() {
+function resolvePlatformPackageBinary(resolver = require.resolve) {
+  try {
+    return resolver(platformBinarySpecifier());
+  } catch {
+    return null;
+  }
+}
+
+function resolveBinary(resolver = require.resolve) {
   const override = envBinaryPath();
   if (override) {
     return override;
   }
-  const vendor = vendorBinaryPath();
-  if (fs.existsSync(vendor)) {
-    return vendor;
-  }
-  return null;
+  return resolvePlatformPackageBinary(resolver);
 }
 
 module.exports = {
-  PACKAGE_ROOT,
   envBinaryPath,
   resolveBinary,
-  vendorBinaryPath,
-  vendorDir,
+  resolvePlatformPackageBinary,
 };

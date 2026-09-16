@@ -11,6 +11,6 @@ rust-toolchain.toml
 .cursor
 .github
 npm/test
-npm/vendor
+npm/scripts
 *.md
 !README.md

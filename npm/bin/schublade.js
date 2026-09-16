@@ -1,30 +1,42 @@
 #!/usr/bin/env node
 "use strict";
 
-const { spawn } = require("child_process");
+const { spawnSync } = require("child_process");
 const { resolveBinary } = require("../lib/resolve");
-const { ensureBinary } = require("../lib/download");
+const { ensureCargoBinary } = require("../lib/cargo");
 
-async function main() {
-  let binary = resolveBinary();
-  if (!binary) {
-    binary = await ensureBinary();
-  }
-  const child = spawn(binary, process.argv.slice(2), { stdio: "inherit" });
-  child.on("exit", (code, signal) => {
-    if (signal) {
-      process.kill(process.pid, signal);
-      return;
-    }
-    process.exit(code ?? 1);
-  });
-  child.on("error", (error) => {
-    console.error(`schublade: failed to start ${binary}: ${error.message}`);
-    process.exit(1);
-  });
+function fail(message) {
+  console.error(`schublade: ${message}`);
+  process.exit(1);
 }
 
-main().catch((error) => {
-  console.error(`schublade: ${error.message}`);
-  process.exit(1);
-});
+function main() {
+  let binary;
+  try {
+    binary = resolveBinary();
+    if (!binary) {
+      binary = ensureCargoBinary();
+    }
+  } catch (error) {
+    fail(error.message);
+  }
+
+  if (!binary) {
+    fail(
+      "Couldn't find a platform package (@schublade/cli-<os>-<arch>) or a Cargo checkout to build from. " +
+        "Install via npm so the matching optional dependency is present, or run from the schublade source repo with Rust installed.",
+    );
+  }
+
+  const result = spawnSync(binary, process.argv.slice(2), { stdio: "inherit" });
+  if (result.error) {
+    fail(`failed to start ${binary}: ${result.error.message}`);
+  }
+  if (result.signal) {
+    process.kill(process.pid, result.signal);
+    return;
+  }
+  process.exit(result.status ?? 1);
+}
+
+main();
