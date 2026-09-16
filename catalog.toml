@@ -1,0 +1,207 @@
+name = "Aarau Designsystem"
+
+[[stories]]
+id = "accordion"
+title = "Accordion"
+section = "Components"
+description = "Reveals a section of supporting content without leaving the page."
+generator = "html"
+code = """<Accordion title="{{title}}" defaultOpen={{{open}}} />"""
+template = """
+<div class="acc">
+  <details class="acc-item"{{openAttr}}>
+    <summary class="acc-summary">{{title}}</summary>
+    <div class="acc-body">{{body}}</div>
+  </details>
+</div>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "title"
+label = "Title"
+default = "Delivery and returns"
+
+[[stories.controls]]
+kind = "text"
+id = "body"
+label = "Body"
+default = "Orders placed before 14:00 CET leave Aarau the same day. Returns are free for 30 days."
+
+[[stories.controls]]
+kind = "boolean"
+id = "open"
+label = "Open by default"
+default = true
+
+[[stories]]
+id = "avatar-group"
+title = "Avatar group"
+section = "Components"
+description = "Summarizes several people as an overlapping, accessible avatar stack."
+generator = "avatar-group"
+code = """<AvatarGroup aria-label="{{total}} members" items={members} max={{{visible}}} size="{{size}}" />"""
+
+[[stories.controls]]
+kind = "select"
+id = "size"
+label = "Size"
+default = "md"
+
+[[stories.controls.options]]
+value = "sm"
+label = "Small"
+
+[[stories.controls.options]]
+value = "md"
+label = "Medium"
+
+[[stories.controls.options]]
+value = "lg"
+label = "Large"
+
+[[stories.controls]]
+kind = "number"
+id = "total"
+label = "Total avatars"
+min = 1
+max = 12
+default = 7
+
+[[stories.controls]]
+kind = "number"
+id = "visible"
+label = "Visible before overflow"
+min = 1
+max = 8
+default = 4
+
+[[stories.controls]]
+kind = "boolean"
+id = "showCount"
+label = "Show member count"
+default = true
+
+[[stories]]
+id = "badge"
+title = "Badge"
+section = "Components"
+description = "A compact status label for counts, states, and metadata."
+generator = "html"
+code = """<Badge tone="{{tone}}">{{label}}</Badge>"""
+template = """<span class="badge" data-tone="{{tone}}">{{label}}</span>"""
+
+[[stories.controls]]
+kind = "select"
+id = "tone"
+label = "Tone"
+default = "neutral"
+
+[[stories.controls.options]]
+value = "neutral"
+label = "Neutral"
+
+[[stories.controls.options]]
+value = "accent"
+label = "Accent"
+
+[[stories.controls.options]]
+value = "warning"
+label = "Warning"
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "In review"
+
+[[stories]]
+id = "button"
+title = "Button"
+section = "Components"
+description = "The primary action control. Keep the label short and specific."
+generator = "html"
+code = """<Button variant="{{variant}}" size="{{size}}" disabled={{{disabled}}}>{{label}}</Button>"""
+template = """
+<button class="btn" data-variant="{{variant}}" data-size="{{size}}" type="button"{{disabledAttr}}>{{label}}</button>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Save changes"
+
+[[stories.controls]]
+kind = "select"
+id = "variant"
+label = "Variant"
+default = "primary"
+
+[[stories.controls.options]]
+value = "primary"
+label = "Primary"
+
+[[stories.controls.options]]
+value = "secondary"
+label = "Secondary"
+
+[[stories.controls.options]]
+value = "ghost"
+label = "Ghost"
+
+[[stories.controls]]
+kind = "select"
+id = "size"
+label = "Size"
+default = "md"
+
+[[stories.controls.options]]
+value = "sm"
+label = "Small"
+
+[[stories.controls.options]]
+value = "md"
+label = "Medium"
+
+[[stories.controls.options]]
+value = "lg"
+label = "Large"
+
+[[stories.controls]]
+kind = "boolean"
+id = "disabled"
+label = "Disabled"
+default = false
+
+[[stories]]
+id = "chip"
+title = "Chip"
+section = "Components"
+description = "A compact choice or filter token, optionally dismissible."
+generator = "html"
+code = """<Chip selected={{{selected}}} dismissible={{{dismissible}}}>{{label}}</Chip>"""
+template = """
+<span class="chip" data-selected="{{selected}}">
+  <span>{{label}}</span>
+  <button type="button" class="chip-x" aria-label="Remove {{label}}"{{dismissAttr}}>×</button>
+</span>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Design system"
+
+[[stories.controls]]
+kind = "boolean"
+id = "selected"
+label = "Selected"
+default = true
+
+[[stories.controls]]
+kind = "boolean"
+id = "dismissible"
+label = "Dismissible"
+default = true
