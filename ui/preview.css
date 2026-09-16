@@ -42,6 +42,14 @@ body {
   padding: 32px;
 }
 
+.preview-error {
+  margin: 0;
+  max-width: 40rem;
+  white-space: pre-wrap;
+  color: var(--preview-warn);
+  font: 12px/1.5 ui-monospace, monospace;
+}
+
 .ag-wrap {
   display: flex;
   flex-direction: column;
