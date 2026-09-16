@@ -3,6 +3,7 @@ mod cli;
 mod config;
 mod render;
 mod server;
+mod stories;
 
 use clap::Parser;
 use cli::{Cli, Command};

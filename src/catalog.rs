@@ -66,6 +66,17 @@ pub enum Control {
     },
 }
 
+impl Control {
+    pub fn id(&self) -> &str {
+        match self {
+            Self::Select { id, .. }
+            | Self::Number { id, .. }
+            | Self::Boolean { id, .. }
+            | Self::Text { id, .. } => id,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SelectOption {
     pub value: String,
@@ -103,6 +114,23 @@ impl Catalog {
         let catalog: Catalog =
             toml::from_str(&raw).map_err(|error| format!("catalog: {error}"))?;
         Ok((catalog, resolved))
+    }
+
+    pub fn empty(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            stories: Vec::new(),
+        }
+    }
+
+    pub fn merge_stories(&mut self, incoming: Vec<Story>) {
+        for story in incoming {
+            if let Some(existing) = self.stories.iter_mut().find(|item| item.id == story.id) {
+                *existing = story;
+            } else {
+                self.stories.push(story);
+            }
+        }
     }
 
     pub fn story(&self, id: &str) -> Option<&Story> {
@@ -167,5 +195,32 @@ mod tests {
             found += 1;
         }
         assert!(found >= 7, "expected example catalogs, found {found}");
+    }
+
+    #[test]
+    fn merge_replaces_matching_ids() {
+        let mut catalog = Catalog::empty("Demo");
+        catalog.stories.push(Story {
+            id: "button".into(),
+            title: "Old".into(),
+            section: "Components".into(),
+            description: String::new(),
+            generator: Generator::Html,
+            template: Some("<button>old</button>".into()),
+            code: "<Button />".into(),
+            controls: Vec::new(),
+        });
+        catalog.merge_stories(vec![Story {
+            id: "button".into(),
+            title: "New".into(),
+            section: "Components".into(),
+            description: String::new(),
+            generator: Generator::Html,
+            template: Some("<button>new</button>".into()),
+            code: "<Button />".into(),
+            controls: Vec::new(),
+        }]);
+        assert_eq!(catalog.stories.len(), 1);
+        assert_eq!(catalog.story("button").unwrap().title, "New");
     }
 }
