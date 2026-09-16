@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
@@ -6,7 +6,14 @@ use serde_json::{Map, Value};
 
 use crate::catalog::{Control, Generator, SelectOption, Story};
 
-const STORY_SUFFIXES: &[&str] = &[".stories.toml", ".story.toml"];
+const STORY_SUFFIXES: &[&str] = &[
+    ".stories.jsx",
+    ".stories.js",
+    ".stories.toml",
+    ".story.jsx",
+    ".story.js",
+    ".story.toml",
+];
 
 #[derive(Debug, Clone)]
 pub struct DiscoveredStories {
@@ -84,7 +91,7 @@ impl ArgOption {
     }
 }
 
-/// Walk `root` for `*.stories.toml` / `*.story.toml` and turn them into catalog stories.
+/// Walk `root` for `*.stories.js(x)` and `*.stories.toml` and turn them into catalog stories.
 pub fn discover(root: &Path) -> Result<DiscoveredStories, String> {
     if !root.exists() {
         return Err(format!("stories directory not found: {}", root.display()));
@@ -148,11 +155,20 @@ fn is_story_file(name: &str) -> bool {
 }
 
 pub fn load_story_file(path: &Path) -> Result<Vec<Story>, String> {
-    let raw = std::fs::read_to_string(path)
-        .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-    let file: StoryFile =
-        toml::from_str(&raw).map_err(|error| format!("{}: {error}", path.display()))?;
-    file.into_stories(path)
+    match path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or_default()
+    {
+        "js" | "jsx" => crate::csf::load_csf_file(path),
+        _ => {
+            let raw = std::fs::read_to_string(path)
+                .map_err(|error| format!("could not read {}: {error}", path.display()))?;
+            let file: StoryFile =
+                toml::from_str(&raw).map_err(|error| format!("{}: {error}", path.display()))?;
+            file.into_stories(path)
+        }
+    }
 }
 
 impl StoryFile {
@@ -192,6 +208,9 @@ impl StoryFile {
                 template,
                 code,
                 controls,
+                component_source: None,
+                component_export: None,
+                component_name: None,
             }]);
         }
 
@@ -222,6 +241,9 @@ impl StoryFile {
                 template: template.clone(),
                 code: code.clone(),
                 controls,
+                component_source: None,
+                component_export: None,
+                component_name: None,
             });
         }
         Ok(out)
@@ -267,6 +289,129 @@ fn parse_arg_types(
         out.push((id.clone(), spec));
     }
     Ok(out)
+}
+
+pub fn build_controls_from_json(
+    arg_types: &BTreeMap<String, Value>,
+    args: &Map<String, Value>,
+    path: &Path,
+) -> Result<Vec<Control>, String> {
+    let mut controls = Vec::new();
+    let mut seen = BTreeSet::new();
+
+    for (id, spec) in arg_types {
+        seen.insert(id.clone());
+        let default = args.get(id);
+        controls.push(control_from_json_spec(id, spec, default, path)?);
+    }
+
+    for (id, value) in args {
+        if seen.contains(id) {
+            continue;
+        }
+        controls.push(infer_control(id, value));
+    }
+
+    Ok(controls)
+}
+
+pub fn control_from_json_spec(
+    id: &str,
+    value: &Value,
+    default: Option<&Value>,
+    path: &Path,
+) -> Result<Control, String> {
+    let spec = json_arg_type(id, value, path)?;
+    control_from_spec(id, &spec, default.cloned(), path)
+}
+
+fn json_arg_type(id: &str, value: &Value, path: &Path) -> Result<ArgTypeSpec, String> {
+    let object = value.as_object().ok_or_else(|| {
+        format!("{}: argTypes.{id} must be an object", path.display())
+    })?;
+    let control = match object.get("control") {
+        Some(Value::String(kind)) => Some(kind.clone()),
+        Some(Value::Object(inner)) => inner
+            .get("type")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        Some(_) => {
+            return Err(format!(
+                "{}: argTypes.{id}.control must be a string or {{ type }}",
+                path.display()
+            ));
+        }
+        None => object
+            .get("type")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    };
+    let name = object
+        .get("name")
+        .or_else(|| object.get("label"))
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let options = match object.get("options") {
+        Some(Value::Array(items)) => items
+            .iter()
+            .map(|item| json_arg_option(id, item, path))
+            .collect::<Result<Vec<_>, _>>()?,
+        Some(_) => {
+            return Err(format!(
+                "{}: argTypes.{id}.options must be an array",
+                path.display()
+            ));
+        }
+        None => Vec::new(),
+    };
+    Ok(ArgTypeSpec {
+        control,
+        name,
+        options,
+        min: object.get("min").and_then(Value::as_i64),
+        max: object.get("max").and_then(Value::as_i64),
+    })
+}
+
+fn json_arg_option(id: &str, value: &Value, path: &Path) -> Result<ArgOption, String> {
+    match value {
+        Value::String(text) => Ok(ArgOption::Value(text.clone())),
+        Value::Number(number) => Ok(ArgOption::Value(number.to_string())),
+        Value::Bool(flag) => Ok(ArgOption::Value(flag.to_string())),
+        Value::Object(object) => {
+            let option_value = object
+                .get("value")
+                .map(json_to_plain)
+                .ok_or_else(|| {
+                    format!(
+                        "{}: argTypes.{id} option is missing value",
+                        path.display()
+                    )
+                })?;
+            let label = object
+                .get("label")
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            Ok(ArgOption::Pair {
+                value: option_value,
+                label,
+            })
+        }
+        _ => Err(format!(
+            "{}: argTypes.{id} has an invalid option",
+            path.display()
+        )),
+    }
+}
+
+fn json_to_plain(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Bool(flag) => flag.to_string(),
+        Value::Number(number) => number.to_string(),
+        Value::Null => String::new(),
+        other => other.to_string(),
+    }
 }
 
 fn build_controls(
@@ -391,7 +536,7 @@ fn inferred_kind(value: &Value) -> &'static str {
     }
 }
 
-fn overlay_control_defaults(controls: &[Control], values: &Map<String, Value>) -> Vec<Control> {
+pub fn overlay_control_defaults(controls: &[Control], values: &Map<String, Value>) -> Vec<Control> {
     controls
         .iter()
         .map(|control| {
@@ -438,7 +583,7 @@ fn overlay_control_defaults(controls: &[Control], values: &Map<String, Value>) -
         .collect()
 }
 
-fn default_code(title: &str, controls: &[Control]) -> String {
+pub fn default_code(title: &str, controls: &[Control]) -> String {
     let component = title
         .split('/')
         .next_back()
@@ -458,7 +603,7 @@ fn default_code(title: &str, controls: &[Control]) -> String {
             let id = control.id();
             match control {
                 Control::Boolean { .. } | Control::Number { .. } => {
-                    format!("{id}={{{{{id}}}}}")
+                    format!("{id}={{{{{{{id}}}}}}}")
                 }
                 _ => format!("{id}=\"{{{{{id}}}}}\""),
             }
@@ -511,7 +656,7 @@ fn default_number(value: Option<&Value>) -> i64 {
     }
 }
 
-fn id_from_filename(path: &Path) -> String {
+pub fn id_from_filename(path: &Path) -> String {
     let name = path
         .file_name()
         .and_then(|value| value.to_str())
@@ -524,14 +669,14 @@ fn id_from_filename(path: &Path) -> String {
     slug(name)
 }
 
-fn split_title(title: &str) -> (String, String) {
+pub fn split_title(title: &str) -> (String, String) {
     match title.rsplit_once('/') {
         Some((section, name)) => (section.trim().to_string(), name.trim().to_string()),
         None => ("Components".into(), title.trim().to_string()),
     }
 }
 
-fn slug(input: &str) -> String {
+pub fn slug(input: &str) -> String {
     let mut out = String::new();
     let mut pending_dash = false;
     for ch in input.chars() {
@@ -577,7 +722,7 @@ fn humanize(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::catalog::Catalog;
+    use crate::catalog::{Catalog, Generator};
     use crate::render::render_story;
 
     fn write_tree(files: &[(&str, &str)]) -> PathBuf {
@@ -806,13 +951,133 @@ control = "select"
             .iter()
             .find(|story| story.id == "button")
             .unwrap();
+        assert_eq!(button.generator, Generator::React);
+        assert_eq!(button.component_export.as_deref(), Some("Button"));
         assert!(
             button
+                .component_source
+                .as_deref()
+                .unwrap()
+                .contains("function Button"),
+            "button story should import the React component source"
+        );
+        assert!(
+            button.code.contains("<Button"),
+            "code usage should be generated from the imported name: {}",
+            button.code
+        );
+        let badge = discovered
+            .stories
+            .iter()
+            .find(|story| story.id == "badge")
+            .unwrap();
+        assert_eq!(badge.generator, Generator::Html);
+        assert!(
+            badge
                 .template
                 .as_deref()
                 .unwrap()
-                .contains(r#"class="btn""#)
+                .contains(r#"data-tone="{{tone}}""#)
         );
+        assert!(badge.code.contains("<Badge"), "{}", badge.code);
+    }
+
+    #[test]
+    fn discovers_js_csf_and_renders_react_payload() {
+        let root = write_tree(&[
+            (
+                "button.jsx",
+                r#"
+export function Button({ label, variant, disabled }) {
+  return (
+    <button className="btn" data-variant={variant} disabled={disabled}>
+      {label}
+    </button>
+  );
+}
+"#,
+            ),
+            (
+                "button.stories.jsx",
+                r#"
+import { Button } from './button.jsx';
+
+export default {
+  title: 'Components/Button',
+  component: Button,
+  args: {
+    label: 'Save changes',
+    variant: 'primary',
+    disabled: false,
+  },
+  argTypes: {
+    variant: { control: 'select', options: ['primary', 'ghost'] },
+    disabled: { control: 'boolean' },
+  },
+};
+
+export const Default = {};
+
+export const Ghost = {
+  args: { variant: 'ghost', label: 'Cancel' },
+};
+"#,
+            ),
+            (
+                "badge.html",
+                r#"<span class="badge" data-tone="{{tone}}">{{label}}</span>"#,
+            ),
+            (
+                "badge.stories.js",
+                r#"
+import html from './badge.html';
+
+export default {
+  title: 'Components/Badge',
+  component: html,
+  args: { tone: 'neutral', label: 'In review' },
+  argTypes: {
+    tone: { control: 'select', options: ['neutral', 'accent'] },
+  },
+};
+"#,
+            ),
+        ]);
+
+        let discovered = discover(&root).unwrap();
+        let ids: Vec<_> = discovered
+            .stories
+            .iter()
+            .map(|story| story.id.as_str())
+            .collect();
+        assert!(ids.contains(&"button"), "{ids:?}");
+        assert!(ids.contains(&"button-ghost"), "{ids:?}");
+        assert!(ids.contains(&"badge"), "{ids:?}");
+
+        let button = discovered
+            .stories
+            .iter()
+            .find(|story| story.id == "button")
+            .unwrap();
+        let rendered = render_story(button, &Value::Object(Map::new())).unwrap();
+        assert!(rendered.code.contains("<Button"));
+        assert!(rendered.code.contains("Save changes"));
+        let react = rendered.react.expect("react payload");
+        assert!(react.source.contains("function Button"));
+        assert_eq!(react.export_name, "Button");
+        assert_eq!(react.props["label"], Value::String("Save changes".into()));
+
+        let badge = discovered
+            .stories
+            .iter()
+            .find(|story| story.id == "badge")
+            .unwrap();
+        let rendered = render_story(badge, &Value::Object(Map::new())).unwrap();
+        assert!(rendered.html.contains("In review"));
+        assert!(rendered.react.is_none());
+        assert!(rendered.code.contains("<Badge"));
+
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
@@ -820,5 +1085,14 @@ control = "select"
         assert_eq!(slug("Avatar Group"), "avatar-group");
         assert_eq!(split_title("Forms/Text field"), ("Forms".into(), "Text field".into()));
         assert_eq!(humanize("show-count"), "Show Count");
+        let code = default_code(
+            "Button",
+            &[Control::Boolean {
+                id: "disabled".into(),
+                label: "Disabled".into(),
+                default: false,
+            }],
+        );
+        assert_eq!(code, "<Button disabled={{{disabled}}} />");
     }
 }
