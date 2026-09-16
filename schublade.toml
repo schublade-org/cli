@@ -1,0 +1,26 @@
+# Schublade workshop configuration.
+# Consumers point the CLI at this file; no JavaScript toolchain is required.
+
+[server]
+host = "0.0.0.0"
+port = 47291
+
+# How the isolated preview applies light/dark.
+# trigger: "data-attribute" | "class-name" | "local-storage"
+[theme]
+trigger = "data-attribute"
+key = "data-theme"
+light = "light"
+dark = "dark"
+
+# Native accessibility checks run inside the preview iframe.
+# Comment out a rule to disable it.
+[a11y]
+enabled = true
+rules = [
+  "image-alt",
+  "button-name",
+  "link-name",
+  "label",
+  "control-name",
+]
