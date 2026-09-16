@@ -1,0 +1,61 @@
+name = "A11y violations"
+
+[[stories]]
+id = "missing-alt"
+title = "Image without alt"
+section = "Violations"
+description = "An image that omits alt entirely. Should trip image-alt."
+code = """<img src={portrait} />"""
+template = """
+<div class="example-stack">
+  <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect fill='%23C4B5A0' width='64' height='64'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%23F0D2B6'/%3E%3C/svg%3E" width="64" height="64" />
+</div>
+"""
+
+[[stories]]
+id = "unnamed-button"
+title = "Unnamed button"
+section = "Violations"
+description = "A primary button with no text and no aria-label. Should trip button-name."
+code = """<Button variant=\"primary\" />"""
+template = """
+<button class="btn" data-variant="primary" data-size="md" type="button"></button>
+"""
+
+[[stories]]
+id = "unnamed-link"
+title = "Unnamed link"
+section = "Violations"
+description = "A link whose accessible name is empty. Should trip link-name."
+code = """<Link href=\"/docs\" />"""
+template = """
+<a class="example-link" href="/docs"></a>
+"""
+
+[[stories]]
+id = "unlabeled-field"
+title = "Unlabeled field"
+section = "Violations"
+description = "A text field with no label, aria-label, or title. Should trip label."
+code = """<Input />"""
+template = """
+<div class="example-stack">
+  <input type="text" />
+</div>
+"""
+
+[[stories]]
+id = "clean-button"
+title = "Named button"
+section = "Passing"
+description = "A correctly named button so you can compare a clean scan."
+code = """<Button>{{label}}</Button>"""
+template = """
+<button class="btn" data-variant="primary" data-size="md" type="button">{{label}}</button>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Save changes"

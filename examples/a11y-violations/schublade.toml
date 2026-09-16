@@ -1,0 +1,22 @@
+# Mixed accessibility violations for the native iframe checker.
+catalog = "./catalog.toml"
+
+[server]
+host = "0.0.0.0"
+port = 47302
+
+[theme]
+trigger = "data-attribute"
+key = "data-theme"
+light = "light"
+dark = "dark"
+
+[a11y]
+enabled = true
+rules = [
+  "image-alt",
+  "button-name",
+  "link-name",
+  "label",
+  "control-name",
+]
