@@ -27,6 +27,7 @@
     mode: localStorage.getItem("schublade:theme") || "light",
     previewReady: false,
     pending: null,
+    static: false,
   };
 
   prevStory.addEventListener("click", () => stepStory(-1));
@@ -81,13 +82,35 @@
     console.error(error);
   });
 
-  async function boot() {
-    showStatus("Loading story…");
-    const response = await fetch("/api/bootstrap");
+  async function loadBootstrap() {
+    const injected = document.getElementById("schublade-bootstrap");
+    if (injected) {
+      const text = injected.textContent.trim();
+      if (text) {
+        state.static = true;
+        return JSON.parse(text);
+      }
+    }
+    try {
+      const response = await fetch("/api/bootstrap");
+      if (response.ok) {
+        state.static = false;
+        return await response.json();
+      }
+    } catch (_error) {
+      /* static host or file:// */
+    }
+    const response = await fetch("./bootstrap.json");
     if (!response.ok) {
       throw new Error("bootstrap failed");
     }
-    state.bootstrap = await response.json();
+    state.static = true;
+    return response.json();
+  }
+
+  async function boot() {
+    showStatus("Loading story…");
+    state.bootstrap = await loadBootstrap();
     catalogName.textContent = state.bootstrap.catalog.name;
     document.title = `${state.bootstrap.catalog.name} · Schublade`;
     renderNav();
@@ -108,7 +131,7 @@
     setStoryNavEnabled(false);
     storyTitle.textContent = "No stories";
     storyDesc.textContent =
-      "This catalog is empty. Add *.stories.toml files or [[stories]] in catalog.toml and restart the server.";
+      "This catalog is empty. Add *.stories.jsx / *.stories.js files or [[stories]] in catalog.toml and restart the server.";
     controlList.innerHTML = "";
     const empty = document.createElement("p");
     empty.className = "controls-empty";
@@ -279,32 +302,56 @@
     }
   }
 
+  async function renderCurrent() {
+    if (state.static && typeof SchubladeRender !== "undefined") {
+      const story = state.bootstrap.catalog.stories.find((item) => item.id === state.storyId);
+      if (!story) {
+        throw new Error("unknown story");
+      }
+      const rendered = SchubladeRender.renderStory(story, state.values);
+      return {
+        html: rendered.html,
+        code: rendered.code,
+        react: rendered.react ?? null,
+        title: story.title,
+        description: story.description,
+      };
+    }
+    const response = await fetch("/api/render", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ story: state.storyId, values: state.values }),
+    });
+    if (!response.ok) {
+      throw new Error("render failed");
+    }
+    return response.json();
+  }
+
   async function refresh() {
     showStatus("Updating preview…");
     try {
-      const response = await fetch("/api/render", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ story: state.storyId, values: state.values }),
-      });
-      if (!response.ok) {
-        throw new Error("render failed");
-      }
-      const payload = await response.json();
+      const payload = await renderCurrent();
       hideStatus();
       codeBody.innerHTML = highlight(payload.code);
-      sendRender(payload.html);
+      sendRender(payload);
     } catch (error) {
       showStatus("Could not render this story.");
       console.error(error);
     }
   }
 
-  function sendRender(html) {
-    state.pending = html;
+  function sendRender(payload) {
+    state.pending = payload;
     if (!state.previewReady || !preview.contentWindow) return;
     preview.contentWindow.postMessage(
-      { source: "schublade", type: "render", html, mode: state.mode },
+      {
+        source: "schublade",
+        type: "render",
+        html: payload.html,
+        react: payload.react ?? null,
+        mode: state.mode,
+      },
       "*"
     );
   }
