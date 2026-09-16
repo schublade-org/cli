@@ -1,0 +1,255 @@
+:root,
+[data-theme="light"],
+html.light {
+  --preview-bg: #ffffff;
+  --preview-fg: #18181b;
+  --preview-muted: #71717a;
+  --preview-line: #e4e4e7;
+  --preview-fill: #f4f4f5;
+  --preview-accent: #18181b;
+  --preview-accent-fg: #ffffff;
+  --preview-warn: #b45309;
+  --preview-warn-bg: #fff7ed;
+}
+
+[data-theme="dark"],
+html.dark {
+  --preview-bg: #18181b;
+  --preview-fg: #f4f4f5;
+  --preview-muted: #a1a1aa;
+  --preview-line: #3f3f46;
+  --preview-fill: #27272a;
+  --preview-accent: #f4f4f5;
+  --preview-accent-fg: #18181b;
+  --preview-warn: #fdba74;
+  --preview-warn-bg: #431407;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--preview-bg);
+  color: var(--preview-fg);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.preview-root {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.ag-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.ag {
+  display: flex;
+  align-items: center;
+}
+
+.ag-item {
+  display: inline-flex;
+  border: 2px solid var(--preview-bg);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-left: -8px;
+}
+
+.ag-item:first-child {
+  margin-left: 0;
+}
+
+.ag img,
+.ag-initials,
+.ag-overflow {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+}
+
+.ag[data-size="sm"] img,
+.ag[data-size="sm"] .ag-initials,
+.ag[data-size="sm"] .ag-overflow {
+  width: 28px;
+  height: 28px;
+}
+
+.ag[data-size="lg"] img,
+.ag[data-size="lg"] .ag-initials,
+.ag[data-size="lg"] .ag-overflow {
+  width: 48px;
+  height: 48px;
+}
+
+.ag-initials,
+.ag-overflow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ag[data-size="sm"] .ag-initials,
+.ag[data-size="sm"] .ag-overflow {
+  font-size: 11px;
+}
+
+.ag[data-size="lg"] .ag-initials,
+.ag[data-size="lg"] .ag-overflow {
+  font-size: 16px;
+}
+
+.ag-overflow {
+  background: #f4f4f5;
+  color: #3f3f46;
+}
+
+[data-theme="dark"] .ag-overflow,
+html.dark .ag-overflow {
+  background: #3f3f46;
+  color: #f4f4f5;
+}
+
+.ag-caption {
+  margin: 0;
+  color: var(--preview-muted);
+  font-size: 13px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.btn[data-variant="primary"] {
+  background: var(--preview-accent);
+  color: var(--preview-accent-fg);
+}
+
+.btn[data-variant="secondary"] {
+  background: transparent;
+  color: var(--preview-fg);
+  box-shadow: inset 0 0 0 1px var(--preview-line);
+}
+
+.btn[data-variant="ghost"] {
+  background: transparent;
+  color: var(--preview-fg);
+}
+
+.btn[data-size="sm"] {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.btn[data-size="md"] {
+  padding: 8px 14px;
+  font-size: 14px;
+}
+
+.btn[data-size="lg"] {
+  padding: 11px 18px;
+  font-size: 15px;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.badge[data-tone="neutral"] {
+  background: var(--preview-fill);
+  color: var(--preview-fg);
+}
+
+.badge[data-tone="accent"] {
+  background: var(--preview-accent);
+  color: var(--preview-accent-fg);
+}
+
+.badge[data-tone="warning"] {
+  background: var(--preview-warn-bg);
+  color: var(--preview-warn);
+}
+
+.acc {
+  width: min(420px, 100%);
+}
+
+.acc-item {
+  border: 1px solid var(--preview-line);
+  border-radius: 12px;
+  padding: 0 16px;
+}
+
+.acc-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px 0;
+  font-weight: 500;
+}
+
+.acc-summary::-webkit-details-marker {
+  display: none;
+}
+
+.acc-body {
+  padding: 0 0 16px;
+  color: var(--preview-muted);
+  line-height: 1.55;
+  font-size: 14px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 6px 10px 6px 12px;
+  background: var(--preview-fill);
+  color: var(--preview-fg);
+  font-size: 13px;
+}
+
+.chip[data-selected="true"] {
+  background: var(--preview-accent);
+  color: var(--preview-accent-fg);
+}
+
+.chip-x {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.chip-x[hidden] {
+  display: none;
+}
