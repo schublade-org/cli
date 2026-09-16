@@ -17,9 +17,23 @@ The workshop listens on `http://127.0.0.1:47291` by default (`0.0.0.0:47291` so 
 ```bash
 cargo run -- serve --port 47291
 cargo run -- serve --config ./schublade.toml
+cargo run -- serve --config ./schublade.toml --catalog ./catalog.toml
 ```
 
 `schublade` with no subcommand also starts the server.
+
+## Examples
+
+Edge-case catalogs live under [`examples/`](examples/). They are real configs, not an in-root demo mode. From an example directory, invoke the **repo-root CLI**:
+
+```bash
+cd examples/empty-catalog
+cargo run --manifest-path ../../Cargo.toml -- serve --config ./schublade.toml
+```
+
+Each example has a `run.sh` that does the same thing. `--config` loads that folder’s `schublade.toml`; the `catalog` path in the file is resolved next to it. You can also pass `--catalog` to point at a file directly.
+
+The root Aarau catalog stays the default demo (`cargo run -- serve`). See [`examples/README.md`](examples/README.md) for empty catalog, a11y violations, theme triggers, overflow, and many-controls.
 
 ## What you get
 
@@ -34,6 +48,8 @@ cargo run -- serve --config ./schublade.toml
 `schublade.toml` (loaded from the working directory, or `--config`):
 
 ```toml
+catalog = "./catalog.toml"
+
 [theme]
 trigger = "data-attribute" # or "class-name", "local-storage"
 key = "data-theme"
@@ -45,7 +61,9 @@ enabled = true
 rules = ["image-alt", "button-name", "link-name", "label", "control-name"]
 ```
 
-Stories live in `catalog.toml`. Restart the server after edits. The Avatar group story uses a built-in renderer; the others are HTML templates with `{{control}}` tokens.
+Stories live in `catalog.toml`. A relative `catalog` path is resolved against the config file’s directory. Restart the server after edits. The Avatar group story uses a built-in renderer; the others are HTML templates with `{{control}}` tokens.
+
+An empty catalog (name only, no `[[stories]]`) is valid — the workshop shows an empty state instead of refusing to start.
 
 ## Layout
 

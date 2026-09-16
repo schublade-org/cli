@@ -35,7 +35,8 @@ struct RenderRequest {
 pub async fn run(args: ServeArgs) -> Result<(), String> {
     let (mut config, config_path) = AppConfig::load(args.config.as_deref())?;
     config.apply_cli(&args);
-    let catalog = Catalog::load()?;
+    let catalog_source = config.resolve_catalog_path(args.catalog.as_deref(), config_path.as_deref())?;
+    let (catalog, catalog_path) = Catalog::load(catalog_source.as_deref())?;
 
     let bind = format!("{}:{}", config.server.host, config.server.port);
     let listener = TcpListener::bind(&bind)
@@ -54,10 +55,20 @@ pub async fn run(args: ServeArgs) -> Result<(), String> {
     println!("Schublade {}", env!("CARGO_PKG_VERSION"));
     println!("Workshop  http://{display_host}:{}", address.port());
     println!(
-        "Catalog   {} ({} stories)",
+        "Catalog   {} ({} {})",
         catalog.name,
-        catalog.stories.len()
+        catalog.stories.len(),
+        if catalog.stories.len() == 1 {
+            "story"
+        } else {
+            "stories"
+        }
     );
+    if let Some(path) = &catalog_path {
+        println!("          {}", path.display());
+    } else {
+        println!("          bundled default");
+    }
     println!(
         "Theme     {} [{}]",
         config.theme.trigger.as_key(),
