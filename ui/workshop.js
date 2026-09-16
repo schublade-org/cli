@@ -17,6 +17,8 @@
   const sidebar = document.getElementById("sidebar");
   const controls = document.getElementById("controls");
   const scrim = document.getElementById("scrim");
+  const prevStory = document.getElementById("prev-story");
+  const nextStory = document.getElementById("next-story");
 
   const state = {
     bootstrap: null,
@@ -27,8 +29,8 @@
     pending: null,
   };
 
-  document.getElementById("prev-story").addEventListener("click", () => stepStory(-1));
-  document.getElementById("next-story").addEventListener("click", () => stepStory(1));
+  prevStory.addEventListener("click", () => stepStory(-1));
+  nextStory.addEventListener("click", () => stepStory(1));
   document.getElementById("open-nav").addEventListener("click", () => toggleDrawer(sidebar));
   document.getElementById("open-controls").addEventListener("click", () => toggleDrawer(controls));
   scrim.addEventListener("click", closeDrawers);
@@ -47,7 +49,9 @@
 
   window.addEventListener("hashchange", () => {
     if (!state.bootstrap) return;
-    selectStory(storyIdFromHash() || state.bootstrap.catalog.stories[0].id, false);
+    const stories = state.bootstrap.catalog.stories;
+    if (!stories.length) return;
+    selectStory(storyIdFromHash() || stories[0].id, false);
   });
 
   window.addEventListener("message", (event) => {
@@ -87,30 +91,64 @@
     catalogName.textContent = state.bootstrap.catalog.name;
     document.title = `${state.bootstrap.catalog.name} · Schublade`;
     renderNav();
+    const stories = state.bootstrap.catalog.stories;
+    if (!stories.length) {
+      showEmptyCatalog();
+      return;
+    }
+    setStoryNavEnabled(true);
     const initial =
       storyIdFromHash() ||
-      state.bootstrap.catalog.stories.find((story) => story.id === "avatar-group")?.id ||
-      state.bootstrap.catalog.stories[0].id;
+      stories.find((story) => story.id === "avatar-group")?.id ||
+      stories[0].id;
     await selectStory(initial, true);
   }
 
+  function showEmptyCatalog() {
+    setStoryNavEnabled(false);
+    storyTitle.textContent = "No stories";
+    storyDesc.textContent =
+      "This catalog is empty. Add [[stories]] blocks to catalog.toml and restart the server.";
+    controlList.innerHTML = "";
+    const empty = document.createElement("p");
+    empty.className = "controls-empty";
+    empty.textContent = "No controls until a story exists.";
+    controlList.appendChild(empty);
+    codeBody.textContent = "";
+    showStatus("This catalog has no stories yet.");
+  }
+
+  function setStoryNavEnabled(enabled) {
+    prevStory.disabled = !enabled;
+    nextStory.disabled = !enabled;
+  }
+
   function renderNav() {
+    const stories = state.bootstrap.catalog.stories;
+    nav.innerHTML = "";
+    if (!stories.length) {
+      const empty = document.createElement("p");
+      empty.className = "nav-empty";
+      empty.textContent = "No stories in this catalog.";
+      nav.appendChild(empty);
+      return;
+    }
+
     const sections = new Map();
-    for (const story of state.bootstrap.catalog.stories) {
+    for (const story of stories) {
       if (!sections.has(story.section)) {
         sections.set(story.section, []);
       }
       sections.get(story.section).push(story);
     }
 
-    nav.innerHTML = "";
-    for (const [name, stories] of sections) {
+    for (const [name, sectionStories] of sections) {
       const section = document.createElement("section");
       section.className = "nav-section";
       section.innerHTML = `<h2 class="nav-label">${escapeHtml(name)}</h2>`;
       const list = document.createElement("ul");
       list.className = "nav-list";
-      for (const story of stories) {
+      for (const story of sectionStories) {
         const item = document.createElement("li");
         const button = document.createElement("button");
         button.type = "button";
@@ -156,6 +194,13 @@
 
   function renderControls(story) {
     controlList.innerHTML = "";
+    if (!story.controls.length) {
+      const empty = document.createElement("p");
+      empty.className = "controls-empty";
+      empty.textContent = "This story has no controls.";
+      controlList.appendChild(empty);
+      return;
+    }
     for (const control of story.controls) {
       const row = document.createElement("div");
       row.className = "control-row";
