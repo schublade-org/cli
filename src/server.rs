@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -15,6 +16,7 @@ use crate::catalog::{Bootstrap, Catalog};
 use crate::cli::ServeArgs;
 use crate::config::AppConfig;
 use crate::render::render_story;
+use crate::stories;
 
 #[derive(RustEmbed)]
 #[folder = "ui/"]
@@ -35,8 +37,12 @@ struct RenderRequest {
 pub async fn run(args: ServeArgs) -> Result<(), String> {
     let (mut config, config_path) = AppConfig::load(args.config.as_deref())?;
     config.apply_cli(&args);
-    let catalog_source = config.resolve_catalog_path(args.catalog.as_deref(), config_path.as_deref())?;
-    let (catalog, catalog_path) = Catalog::load(catalog_source.as_deref())?;
+    let catalog_source =
+        config.resolve_catalog_path(args.catalog.as_deref(), config_path.as_deref())?;
+    let stories_root =
+        config.resolve_stories_path(args.stories.as_deref(), config_path.as_deref())?;
+    let (catalog, catalog_path, story_files) =
+        load_workshop(&config, catalog_source.as_deref(), stories_root.as_deref())?;
 
     let bind = format!("{}:{}", config.server.host, config.server.port);
     let listener = TcpListener::bind(&bind)
@@ -65,9 +71,17 @@ pub async fn run(args: ServeArgs) -> Result<(), String> {
         }
     );
     if let Some(path) = &catalog_path {
-        println!("          {}", path.display());
-    } else {
+        println!("          catalog {}", path.display());
+    } else if stories_root.is_none() {
         println!("          bundled default");
+    }
+    if let Some(root) = &stories_root {
+        println!(
+            "          stories {} ({} file{})",
+            root.display(),
+            story_files.len(),
+            if story_files.len() == 1 { "" } else { "s" }
+        );
     }
     println!(
         "Theme     {} [{}]",
@@ -103,6 +117,34 @@ pub async fn run(args: ServeArgs) -> Result<(), String> {
         .with_graceful_shutdown(shutdown_signal())
         .await
         .map_err(|error| format!("server: {error}"))
+}
+
+pub fn load_workshop(
+    config: &AppConfig,
+    catalog_source: Option<&std::path::Path>,
+    stories_root: Option<&std::path::Path>,
+) -> Result<(Catalog, Option<PathBuf>, Vec<PathBuf>), String> {
+    let (mut catalog, catalog_path) = match catalog_source {
+        Some(path) => Catalog::load(Some(path))?,
+        None if stories_root.is_some() => (
+            Catalog::empty(config.name.clone().unwrap_or_else(|| "Catalog".into())),
+            None,
+        ),
+        None => Catalog::load(None)?,
+    };
+
+    if let Some(name) = &config.name {
+        catalog.name = name.clone();
+    }
+
+    let mut story_files = Vec::new();
+    if let Some(root) = stories_root {
+        let discovered = stories::discover(root)?;
+        story_files = discovered.files;
+        catalog.merge_stories(discovered.stories);
+    }
+
+    Ok((catalog, catalog_path, story_files))
 }
 
 async fn shutdown_signal() {

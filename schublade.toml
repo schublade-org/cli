@@ -5,6 +5,11 @@
 # examples/ ship their own schublade.toml + catalog.toml and invoke this CLI.
 catalog = "./catalog.toml"
 
+# Optional: walk this directory for CSF-style `*.stories.toml` files.
+# Story files declare args/argTypes and include the real component template.
+# They merge with catalog.toml (story files win on id collisions).
+# stories = "./components"
+
 [server]
 host = "0.0.0.0"
 port = 47291
