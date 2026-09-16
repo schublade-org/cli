@@ -493,7 +493,7 @@ mod tests {
         fs::write(dir.join("catalog.toml"), "name = \"Reload\"\n").unwrap();
         fs::write(
             dir.join("components/badge.html"),
-            r#"<span class=\"badge\">{{label}}</span>"#,
+            r#"<span class="badge">{{label}}</span>"#,
         )
         .unwrap();
         fs::write(
@@ -521,7 +521,7 @@ mod tests {
 
         fs::write(
             dir.join("components/button.html"),
-            r#"<button type=\"button\">{{label}}</button>"#,
+            r#"<button type="button">{{label}}</button>"#,
         )
         .unwrap();
         fs::write(
