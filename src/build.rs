@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn rewrite_makes_assets_relative() {
         let html = rewrite_asset_urls(
-            r#"<link href=\"/workshop.css\"><iframe src=\"/preview\"><script src=\"/vendor/react.production.min.js\"></script>"#,
+            r#"<link href="/workshop.css"><iframe src="/preview"><script src="/vendor/react.production.min.js"></script>"#,
         );
         assert!(html.contains("./workshop.css"));
         assert!(html.contains("./preview.html"));
@@ -200,7 +200,22 @@ mod tests {
         let catalog = root.join("catalog.toml");
         std::fs::write(
             &catalog,
-            r#"name = \"Static kit\"\n\n[[stories]]\nid = \"button\"\ntitle = \"Button\"\nsection = \"Components\"\ndescription = \"A button\"\ntemplate = \"<button>{{label}}</button>\"\ncode = \"<Button>{{label}}</Button>\"\n\n[[stories.controls]]\nkind = \"text\"\nid = \"label\"\nlabel = \"Label\"\ndefault = \"Save\"\n"#,
+            r#"name = "Static kit"
+
+[[stories]]
+id = "button"
+title = "Button"
+section = "Components"
+description = "A button"
+template = "<button>{{label}}</button>"
+code = "<Button>{{label}}</Button>"
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Save"
+"#,
         )
         .unwrap();
 
