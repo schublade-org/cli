@@ -68,3 +68,90 @@ fn parse_csf(source: &str) -> Result<CsfFile, String> {
         variants,
     })
 }
+
+impl CsfFile {
+    fn into_stories(self, path: &Path) -> Result<Vec<Story>, String> {
+        let import = resolve_import(&self.imports, self.component.as_deref(), path)?;
+        let component_path = resolve_against_story(path, &import.path);
+        let source = std::fs::read_to_string(&component_path).map_err(|error| {
+            format!(
+                "{}: could not read component {}: {error}",
+                path.display(),
+                component_path.display()
+            )
+        })?;
+
+        let kind = component_kind(&component_path);
+        let file_id = id_from_filename(path);
+        let (default_section, default_title) =
+            split_title(self.title.as_deref().unwrap_or(&human_title(&file_id)));
+        let title_has_path = self
+            .title
+            .as_deref()
+            .is_some_and(|value| value.contains('/'));
+        let section = default_section;
+        let title = if title_has_path {
+            default_title
+        } else {
+            self.title.clone().unwrap_or(default_title)
+        };
+        let description = self.description.unwrap_or_default();
+        let component_name = match kind {
+            ComponentKind::Html if is_generic_import(&import.name) => title.clone(),
+            _ => import.name.clone(),
+        };
+        let controls = build_controls_from_json(&self.arg_types, &self.args, path)?;
+        let code = default_code(&component_name, &controls);
+        let (generator, template, component_source) = match kind {
+            ComponentKind::Html => (Generator::Html, Some(source), None),
+            ComponentKind::React => (Generator::React, None, Some(source)),
+        };
+
+        let variants = if self.variants.is_empty() {
+            vec![CsfVariant {
+                name: "Default".into(),
+                args: Map::new(),
+            }]
+        } else {
+            self.variants
+        };
+
+        let multiple = variants.len() > 1
+            || variants
+                .first()
+                .is_some_and(|variant| !variant.name.eq_ignore_ascii_case("default"));
+
+        let mut out = Vec::with_capacity(variants.len());
+        for variant in variants {
+            let mut values = self.args.clone();
+            for (key, value) in variant.args {
+                values.insert(key, value);
+            }
+            let controls = overlay_control_defaults(&controls, &values);
+            let story_id = if !multiple || variant.name.eq_ignore_ascii_case("default") {
+                file_id.clone()
+            } else {
+                format!("{}-{}", file_id, slug(&variant.name))
+            };
+            let story_title = if multiple {
+                format!("{} / {}", title, variant.name)
+            } else {
+                title.clone()
+            };
+            out.push(Story {
+                id: story_id,
+                title: story_title,
+                section: section.clone(),
+                description: description.clone(),
+                generator,
+                template: template.clone(),
+                code: code.clone(),
+                controls,
+                component_source: component_source.clone(),
+                component_export: Some(import.name.clone()),
+                component_name: Some(component_name.clone()),
+            });
+        }
+        Ok(out)
+    }
+}
