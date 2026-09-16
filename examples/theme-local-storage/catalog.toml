@@ -1,0 +1,26 @@
+name = "Theme · local-storage"
+
+[[stories]]
+id = "chip"
+title = "Chip"
+section = "Theme"
+description = "Toggle theme. The preview writes localStorage.theme and still applies data-theme so CSS can follow."
+code = """<Chip selected={{{selected}}}>{{label}}</Chip>"""
+template = """
+<span class=\"chip\" data-selected=\"{{selected}}\">
+  <span>{{label}}</span>
+  <button type=\"button\" class=\"chip-x\" aria-label=\"Remove {{label}}\">×</button>
+</span>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Stored theme"
+
+[[stories.controls]]
+kind = "boolean"
+id = "selected"
+label = "Selected"
+default = true

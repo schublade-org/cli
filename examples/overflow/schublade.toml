@@ -1,0 +1,19 @@
+# Avatar overflow and copy that does not fit the canvas.
+catalog = "./catalog.toml"
+
+[server]
+host = "0.0.0.0"
+port = 47306
+
+[theme]
+trigger = "data-attribute"
+key = "data-theme"
+light = "light"
+dark = "dark"
+
+[a11y]
+enabled = true
+rules = [
+  "image-alt",
+  "button-name",
+]
