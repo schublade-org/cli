@@ -1,5 +1,7 @@
 /target
 /dist
+/node_modules
+/npm/vendor
 .DS_Store
 *.swp
 agent-tools/

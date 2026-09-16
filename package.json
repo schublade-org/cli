@@ -1,0 +1,38 @@
+{
+  "name": "schublade",
+  "version": "0.1.0",
+  "description": "Storybook-like component workshop served from a Rust CLI. No JS toolchain in your catalog repo.",
+  "license": "MIT",
+  "bin": {
+    "schublade": "npm/bin/schublade.js"
+  },
+  "scripts": {
+    "postinstall": "node npm/install.js",
+    "test:npm": "node npm/test/platform.test.js && node npm/test/resolve.test.js"
+  },
+  "files": [
+    "npm/bin",
+    "npm/install.js",
+    "npm/lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/schublade-org/schublade.git"
+  },
+  "homepage": "https://github.com/schublade-org/schublade#readme",
+  "bugs": {
+    "url": "https://github.com/schublade-org/schublade/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "schublade",
+    "storybook",
+    "workshop",
+    "cli",
+    "components"
+  ]
+}
