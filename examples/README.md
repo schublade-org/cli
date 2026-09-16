@@ -18,6 +18,17 @@ cargo run -- serve --config examples/story-files/schublade.toml
 
 `--catalog` and `--stories` override the paths in the config if you need to point at a file or directory directly.
 
+Build a portable static site for an example (no server at runtime):
+
+```bash
+cd examples/story-files
+cargo run --manifest-path ../../Cargo.toml -- build --config ./schublade.toml --out ./dist
+# or
+./build.sh
+```
+
+`bash examples/build-all.sh` writes `dist/examples/<name>/` for every example. Point a Vercel (or any static) project at that folder.
+
 The default Aarau catalog at the repo root is unchanged. Use `cargo run -- serve` for that.
 
 | Example | What it exercises | Port |

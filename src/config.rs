@@ -14,7 +14,7 @@ pub struct AppConfig {
     /// Path to catalog.toml. Relative paths resolve against the config file directory.
     #[serde(default)]
     pub catalog: Option<PathBuf>,
-    /// Directory to walk for `*.stories.toml` files. Relative to the config file.
+    /// Directory to walk for `*.stories.js(x)` / `*.stories.toml` files. Relative to the config file.
     #[serde(default)]
     pub stories: Option<PathBuf>,
     #[serde(default)]
@@ -148,11 +148,15 @@ impl AppConfig {
         if let Some(port) = args.port {
             self.server.port = port;
         }
-        if let Some(name) = &args.name {
-            self.name = Some(name.clone());
+        self.apply_workshop_cli(args.name.as_deref(), args.stories.as_deref());
+    }
+
+    pub fn apply_workshop_cli(&mut self, name: Option<&str>, stories: Option<&Path>) {
+        if let Some(name) = name {
+            self.name = Some(name.to_string());
         }
-        if let Some(stories) = &args.stories {
-            self.stories = Some(stories.clone());
+        if let Some(stories) = stories {
+            self.stories = Some(stories.to_path_buf());
         }
     }
 
