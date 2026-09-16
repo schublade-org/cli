@@ -10,6 +10,9 @@ Storybook-like CSF next to the real components. The root CLI walks `components/`
 ```bash
 ./run.sh
 # cargo run --manifest-path ../../Cargo.toml -- serve --config ./schublade.toml
+
+./build.sh
+# writes ./dist — deploy that folder anywhere
 ```
 
 http://127.0.0.1:47308
