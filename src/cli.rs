@@ -29,7 +29,7 @@ pub struct ServeArgs {
     #[arg(long)]
     pub catalog: Option<std::path::PathBuf>,
 
-    /// Directory of `*.stories.toml` files (overrides `stories` in schublade.toml)
+    /// Directory of `*.stories.js(x)` / `*.stories.toml` files (overrides `stories` in schublade.toml)
     #[arg(long)]
     pub stories: Option<std::path::PathBuf>,
 

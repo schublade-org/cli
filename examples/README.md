@@ -29,4 +29,4 @@ The default Aarau catalog at the repo root is unchanged. Use `cargo run -- serve
 | [theme-local-storage](theme-local-storage/) | Theme trigger `local-storage` | 47305 |
 | [overflow](overflow/) | Avatar overflow and long copy | 47306 |
 | [many-controls](many-controls/) | A story with a full control panel | 47307 |
-| [story-files](story-files/) | CSF-style `*.stories.toml` next to components | 47308 |
+| [story-files](story-files/) | CSF `*.stories.jsx` / `*.stories.js` next to HTML and React components | 47308 |
