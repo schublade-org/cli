@@ -317,3 +317,103 @@ fn default_rules() -> Vec<A11yRule> {
         A11yRule::ControlName,
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_config_parses() {
+        let config = AppConfig::default();
+        assert_eq!(config.server.port, 47291);
+        assert_eq!(config.theme.trigger, ThemeTrigger::DataAttribute);
+        assert!(config.a11y.rules.contains(&A11yRule::ImageAlt));
+        assert!(config.stories.is_none());
+    }
+
+    #[test]
+    fn theme_trigger_aliases() {
+        let parsed: ThemeOnly = toml::from_str("trigger = \"className\"").unwrap();
+        assert_eq!(parsed.trigger, ThemeTrigger::ClassName);
+        let parsed: ThemeOnly = toml::from_str("trigger = \"localStorage\"").unwrap();
+        assert_eq!(parsed.trigger, ThemeTrigger::LocalStorage);
+    }
+
+    #[test]
+    fn catalog_path_prefers_cli() {
+        let dir = std::env::temp_dir().join("schublade-cli-catalog");
+        std::fs::create_dir_all(&dir).unwrap();
+        let cli_catalog = dir.join("from-cli.toml");
+        std::fs::write(&cli_catalog, "name = \"CLI\"\n").unwrap();
+        let config = AppConfig::default();
+        let resolved = config
+            .resolve_catalog_path(Some(&cli_catalog), None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(resolved, cli_catalog);
+    }
+
+    #[test]
+    fn catalog_path_is_relative_to_config_file() {
+        let dir = std::env::temp_dir().join("schublade-cfg-rel");
+        std::fs::create_dir_all(&dir).unwrap();
+        let catalog = dir.join("catalog.toml");
+        std::fs::write(&catalog, "name = \"Rel\"\n").unwrap();
+        let config_file = dir.join("schublade.toml");
+        std::fs::write(&config_file, "catalog = \"./catalog.toml\"\n").unwrap();
+
+        let (config, path) = AppConfig::load(Some(&config_file)).unwrap();
+        let resolved = config
+            .resolve_catalog_path(None, path.as_deref())
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            resolved.canonicalize().unwrap(),
+            catalog.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    fn stories_path_is_relative_to_config_file() {
+        let dir = std::env::temp_dir().join("schublade-stories-rel");
+        let stories = dir.join("components");
+        std::fs::create_dir_all(&stories).unwrap();
+        let config_file = dir.join("schublade.toml");
+        std::fs::write(&config_file, "stories = \"./components\"\n").unwrap();
+
+        let (config, path) = AppConfig::load(Some(&config_file)).unwrap();
+        let resolved = config
+            .resolve_stories_path(None, path.as_deref())
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            resolved.canonicalize().unwrap(),
+            stories.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    fn missing_cli_catalog_errors() {
+        let config = AppConfig::default();
+        let missing = PathBuf::from("/tmp/schublade-does-not-exist-catalog.toml");
+        let error = config
+            .resolve_catalog_path(Some(&missing), None)
+            .unwrap_err();
+        assert!(error.contains("catalog not found"));
+    }
+
+    #[test]
+    fn missing_stories_dir_errors() {
+        let config = AppConfig {
+            stories: Some(PathBuf::from("./nope")),
+            ..AppConfig::default()
+        };
+        let error = config.resolve_stories_path(None, None).unwrap_err();
+        assert!(error.contains("stories directory not found"));
+    }
+
+    #[derive(Deserialize)]
+    struct ThemeOnly {
+        trigger: ThemeTrigger,
+    }
+}
