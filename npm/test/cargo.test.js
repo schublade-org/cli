@@ -22,7 +22,6 @@ assert.ok(candidates.some((candidate) => candidate.endsWith(`${path.sep}debug${p
 
 const emptyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "schublade-cargo-"));
 assert.strictEqual(isSourceCheckout(emptyRoot), false);
-assert.strictEqual(existingCargoBinary(emptyRoot), false);
 assert.strictEqual(existingCargoBinary(emptyRoot), null);
 fs.writeFileSync(path.join(emptyRoot, "Cargo.toml"), "[package]\nname = \"other\"\n");
 assert.strictEqual(isSourceCheckout(emptyRoot), false);
