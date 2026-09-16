@@ -8,23 +8,23 @@ The bundled demo catalog is **Aarau Designsystem**: left story nav, an isolated 
 
 ## Install
 
-The CLI is a Rust binary wrapped for npm. Consumers need **npm** (or another Node 18+ package runner). They do not add a JS toolchain, bundler, or Rust to the catalog repo.
+The CLI is a Rust binary published to npm the same way [Biome](https://biomejs.dev) and [git-cliff](https://blog.orhun.dev/packaging-rust-for-npm/) do: a root `schublade` package plus optional platform packages (`@schublade/cli-darwin-arm64`, `@schublade/cli-linux-x64`, …). npm installs only the package that matches your OS and CPU. The `schublade` bin is a small Node wrapper that `require.resolve`s that binary and execs it. There is no `postinstall` and no download from GitHub Releases.
+
+Consumers need **npm** (or another Node 18+ package runner). They do not add a JS toolchain, bundler, or Rust to the catalog repo.
 
 ```bash
 npx schublade serve
 npx schublade build
 ```
 
-`npx` downloads the `schublade` package. `postinstall` fetches the matching prebuilt binary from the GitHub Release for this version (`schublade-vX.Y.Z-<rust-target>.tar.gz`). No compile step.
-
 ```bash
 npm install -g schublade
 schublade serve --config ./schublade.toml
 ```
 
-Supported prebuilt targets: macOS (arm64, x64), Linux glibc (x64, arm64), Windows x64. Alpine/musl is not supported.
+Supported prebuilt targets: macOS (arm64, x64), Linux glibc (x64, arm64), Windows (x64, arm64). Alpine/musl is not supported.
 
-From this repository, `npm install` builds with Cargo when Release assets are missing (`SCHUBLADE_SKIP_DOWNLOAD=1` forces that path). `SCHUBLADE_BINARY=/path/to/schublade` overrides the downloaded binary.
+From this repository, `npx schublade` builds with Cargo when the matching `@schublade/cli-*` package is not installed. `SCHUBLADE_BINARY=/path/to/schublade` overrides the resolved binary.
 
 ## Run
 
@@ -203,9 +203,9 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) builds platform archives, attaches them to a GitHub Release, and publishes to npm when **`NPM_TOKEN`** is set (npm automation token). If `NPM_TOKEN` is absent, the Release still goes up; publish later with `npm publish --access public` from the repo root.
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds each target, publishes `@schublade/cli-<os>-<arch>` **first** (the Rust binary lives inside that package), then publishes the root `schublade` package. Set repository secret **`NPM_TOKEN`** (npm automation token) with publish rights for `schublade` and the `@schublade` org. Create that org on npm before the first tag if it does not exist.
 
-The installer downloads `https://github.com/schublade-org/schublade/releases/download/v<version>/schublade-v<version>-<target>.tar.gz`.
+If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives are a convenience for non-npm installs — `npx schublade` does not download them. To publish later, publish every platform package, then `npm publish --access public` from the repo root.
 
 ## What you get
 
@@ -259,6 +259,5 @@ npm run test:npm
 cargo run -- serve
 cargo run -- serve --config examples/story-files/schublade.toml
 cargo run -- build --config examples/story-files/schublade.toml --out dist/story-files
-SCHUBLADE_SKIP_DOWNLOAD=1 npm install
 npx schublade --help
 ```
