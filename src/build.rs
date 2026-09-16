@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn rewrite_makes_assets_relative() {
         let html = rewrite_asset_urls(
-            r#"<link href=\"/workshop.css\"><iframe src=\"/preview\"><script src=\"/vendor/react.production.min.js\"></script>\"#,
+            r#"<link href="/workshop.css"><iframe src="/preview"><script src="/vendor/react.production.min.js"></script>"#,
         );
         assert!(html.contains("./workshop.css"));
         assert!(html.contains("./preview.html"));
