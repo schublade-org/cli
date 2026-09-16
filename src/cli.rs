@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 #[command(
     name = "schublade",
     version,
-    about = "A Storybook-like component workshop. Run a local server; no JS toolchain required.",
+    about = "A Storybook-like component workshop. Serve it locally or build static HTML.",
     propagate_version = true
 )]
 pub struct Cli {
@@ -17,6 +17,8 @@ pub struct Cli {
 pub enum Command {
     /// Start the workshop server
     Serve(ServeArgs),
+    /// Write a static HTML workshop that can be deployed anywhere
+    Build(BuildArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -55,6 +57,41 @@ impl Default for ServeArgs {
             name: None,
             host: None,
             port: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Parser)]
+pub struct BuildArgs {
+    /// Path to schublade.toml
+    #[arg(short, long)]
+    pub config: Option<std::path::PathBuf>,
+
+    /// Path to catalog.toml (overrides the path in schublade.toml)
+    #[arg(long)]
+    pub catalog: Option<std::path::PathBuf>,
+
+    /// Directory of story files (overrides `stories` in schublade.toml)
+    #[arg(long)]
+    pub stories: Option<std::path::PathBuf>,
+
+    /// Catalog name when no catalog.toml is present
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Output directory
+    #[arg(short, long, default_value = "dist")]
+    pub out: std::path::PathBuf,
+}
+
+impl Default for BuildArgs {
+    fn default() -> Self {
+        Self {
+            config: None,
+            catalog: None,
+            stories: None,
+            name: None,
+            out: std::path::PathBuf::from("dist"),
         }
     }
 }
