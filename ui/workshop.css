@@ -106,6 +106,18 @@ select {
   background: var(--chip);
 }
 
+.nav-empty,
+.controls-empty {
+  margin: 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.controls-empty {
+  margin: 0;
+}
+
 .stage {
   display: grid;
   grid-template-rows: 52px minmax(0, 1fr) auto;
@@ -165,6 +177,12 @@ select {
 .icon-btn.is-active {
   color: var(--text);
   background: var(--chip);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  background: transparent;
 }
 
 .text-btn {
