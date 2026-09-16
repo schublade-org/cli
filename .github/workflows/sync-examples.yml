@@ -1,0 +1,37 @@
+name: Sync example repos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/**"
+      - ".github/scripts/sync-examples.sh"
+      - ".github/workflows/sync-examples.yml"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Mirror examples/ to schublade-org/examples-*
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require EXAMPLES_SYNC_TOKEN
+        env:
+          EXAMPLES_SYNC_TOKEN: ${{ secrets.EXAMPLES_SYNC_TOKEN }}
+        run: |
+          if [ -z "${EXAMPLES_SYNC_TOKEN}" ]; then
+            echo "::error::Repository secret EXAMPLES_SYNC_TOKEN is not set."
+            echo
+            echo "Create a PAT and store it as EXAMPLES_SYNC_TOKEN (not GITHUB_TOKEN)."
+            echo "Classic: repo. Fine-grained on schublade-org: Administration R/W + Contents R/W, all repositories."
+            echo "See README.md → Example repo sync."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Sync each examples/* folder
+        env:
+          EXAMPLES_SYNC_TOKEN: ${{ secrets.EXAMPLES_SYNC_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: bash .github/scripts/sync-examples.sh
