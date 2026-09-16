@@ -1,5 +1,6 @@
 (function () {
   const root = document.getElementById("root");
+  let reactRoot = null;
   let themeConfig = {
     trigger: "data-attribute",
     key: "data-theme",
@@ -22,7 +23,7 @@
         break;
       case "render":
         applyTheme(message.mode ?? "light");
-        root.innerHTML = message.html ?? "";
+        mountPreview(message);
         reportA11y();
         break;
       case "theme":
@@ -37,6 +38,41 @@
   });
 
   window.parent.postMessage({ source: "schublade-preview", type: "ready" }, "*");
+
+  function clearReact() {
+    if (reactRoot) {
+      reactRoot.unmount();
+      reactRoot = null;
+    }
+  }
+
+  function mountPreview(message) {
+    const payload = message.react;
+    if (payload && payload.source) {
+      try {
+        const Component = window.evaluateJsxModule(payload.source, payload.exportName || "default");
+        if (!reactRoot) {
+          reactRoot = window.ReactDOM.createRoot(root);
+        }
+        reactRoot.render(window.React.createElement(Component, payload.props || {}));
+      } catch (error) {
+        clearReact();
+        root.innerHTML = `<pre class="preview-error">${escapeHtml(error && error.message ? error.message : String(error))}</pre>`;
+        console.error(error);
+      }
+      return;
+    }
+    clearReact();
+    root.innerHTML = message.html ?? "";
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
   function applyTheme(mode) {
     const value = mode === "dark" ? themeConfig.dark : themeConfig.light;

@@ -23,42 +23,86 @@ cargo run -- serve --config ./schublade.toml --stories ./components
 
 `schublade` with no subcommand also starts the server.
 
-## Story files
+## Static build
 
-The source of truth for a component’s props is a prescribed file next to the component — the same idea as Storybook CSF, not comments or AST extraction.
+Write a self-contained HTML workshop that runs without the Rust server. Controls, theme, and a11y keep working — rendering happens in the browser.
 
-Comments and JSDoc are too easy to drift. Pulling props out of arbitrary React/Vue/Svelte/HTML is incomplete (unions, defaults, re-exports). Those can be helpers later. The CLI discovers `*.stories.toml` (or `*.story.toml`) and serves them.
-
-```toml
-# components/button.stories.toml
-title = "Components/Button"
-description = "The primary action control."
-component = "./button.html"
-code = """<Button variant="{{variant}}">{{label}}</Button>"""
-
-[args]
-label = "Save changes"
-variant = "primary"
-disabled = false
-
-[argTypes.variant]
-control = "select"
-name = "Variant"
-options = [
-  { value = "primary", label = "Primary" },
-  { value = "ghost", label = "Ghost" },
-]
-
-[[stories]]
-name = "Default"
-
-[[stories]]
-name = "Ghost"
-[stories.args]
-variant = "ghost"
+```bash
+cargo run -- build
+cargo run -- build --out dist
+cargo run -- build --config examples/story-files/schublade.toml --out dist/story-files
 ```
 
-`component` includes the actual template (relative to the story file). `args` are defaults. `argTypes` declare controls (`text`, `select`, `boolean`, `number`). If `argTypes` is omitted, the CLI infers a control from each arg value. Named `[[stories]]` blocks are CSF-style variants; they inherit meta args.
+The folder contains `index.html` (catalog baked in), `preview.html`, CSS/JS (including React for JSX stories), `bootstrap.json`, and a small `vercel.json`. Hash routes (`#/button`) do not need SPA rewrites.
+
+Deploy that folder to any static host — Vercel, Netlify, nginx, GitHub Pages, or `python -m http.server`. Create one Vercel project per example yourself and point the project at that example’s output folder. Schublade does not talk to Vercel.
+
+```bash
+bash examples/build-all.sh
+# writes dist/examples/<name>/
+```
+
+## Story files
+
+The source of truth for a component’s props is a prescribed file next to the component — Storybook-like CSF, not comments or AST extraction.
+
+Define the actual component in HTML or React. The story file imports that component and declares `args` / `argTypes` there. There is no second copy of the markup and no `code = "<Button…>"` usage template.
+
+The CLI discovers `*.stories.js` / `*.stories.jsx` first. `*.stories.toml` remains a fallback.
+
+```jsx
+// components/button.jsx
+export function Button({ label, variant, disabled }) {
+  return (
+    <button className="btn" data-variant={variant} disabled={disabled}>
+      {label}
+    </button>
+  );
+}
+```
+
+```jsx
+// components/button.stories.jsx
+import { Button } from './button.jsx';
+
+export default {
+  title: 'Components/Button',
+  component: Button,
+  args: {
+    label: 'Save changes',
+    variant: 'primary',
+    disabled: false,
+  },
+  argTypes: {
+    variant: { control: 'select', options: ['primary', 'ghost'] },
+    disabled: { control: 'boolean' },
+  },
+};
+
+export const Default = {};
+
+export const Ghost = {
+  args: { variant: 'ghost', label: 'Cancel' },
+};
+```
+
+HTML templates work the same way: import the file and point `component` at it.
+
+```js
+// components/badge.stories.js
+import html from './badge.html';
+
+export default {
+  title: 'Components/Badge',
+  component: html,
+  args: { tone: 'neutral', label: 'In review' },
+  argTypes: {
+    tone: { control: 'select', options: ['neutral', 'accent', 'warning'] },
+  },
+};
+```
+
+`args` are defaults. `argTypes` declare controls (`text`, `select`, `boolean`, `number`). If `argTypes` is omitted, the CLI infers a control from each arg value. Named `export const` objects are variants; they inherit meta args. Code Usage is generated from the imported component name plus the current args.
 
 Point the root CLI at a folder:
 
@@ -80,14 +124,15 @@ cd examples/empty-catalog
 cargo run --manifest-path ../../Cargo.toml -- serve --config ./schublade.toml
 ```
 
-Each example has a `run.sh` that does the same thing. `--config` loads that folder’s `schublade.toml`; the `catalog` and `stories` paths in the file are resolved next to it.
+Each example has a `run.sh` that does the same thing, and `build.sh` where a static export is useful. `--config` loads that folder’s `schublade.toml`; the `catalog` and `stories` paths in the file are resolved next to it.
 
 The root Aarau catalog stays the default demo (`cargo run -- serve`). See [`examples/README.md`](examples/README.md).
 
 ## What you get
 
-- **CLI + server** — `clap` + `axum`. The workshop UI is embedded in the binary.
-- **Story discovery** — `*.stories.toml` next to components, plus `catalog.toml` as fallback.
+- **CLI + server** — `clap` + `axum`. The workshop UI is embedded in the binary. `schublade build` writes the same workshop as static HTML.
+- **Story discovery** — `*.stories.jsx` / `*.stories.js` next to components (TOML still works), plus `catalog.toml` as fallback.
+- **React preview** — `/api/render` returns the imported component source and current props. The iframe mounts React from vendored UMD plus a small local JSX transform. No npm toolchain in the consumer repo.
 - **Isolated iframe preview** — the canvas is a `sandbox="allow-scripts"` iframe. The shell talks to it with `postMessage` only.
 - **Native light/dark** — configurable trigger in `schublade.toml`: `data-attribute`, `class-name` / `className`, or `local-storage` / `localStorage`.
 - **Native a11y** — a small DOM checker in the preview iframe. Enable, disable, or drop rules in `schublade.toml`.
@@ -99,7 +144,7 @@ The root Aarau catalog stays the default demo (`cargo run -- serve`). See [`exam
 
 ```toml
 catalog = "./catalog.toml"
-stories = "./components"   # optional; walk for *.stories.toml
+stories = "./components"   # optional; walk for *.stories.js(x) / *.stories.toml
 
 [theme]
 trigger = "data-attribute" # or "class-name", "local-storage"
@@ -133,4 +178,5 @@ Rust 1.85 or newer (`rust-toolchain.toml` pins 1.85.0).
 cargo test
 cargo run -- serve
 cargo run -- serve --config examples/story-files/schublade.toml
+cargo run -- build --config examples/story-files/schublade.toml --out dist/story-files
 ```

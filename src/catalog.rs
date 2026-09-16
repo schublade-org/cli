@@ -26,6 +26,14 @@ pub struct Story {
     pub code: String,
     #[serde(default)]
     pub controls: Vec<Control>,
+    /// React/JSX source of the imported component. Omitted from `/api/bootstrap`.
+    /// Static builds copy it back into bootstrap.json for offline React mounts.
+    #[serde(default, skip_serializing)]
+    pub component_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub component_export: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub component_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -34,6 +42,7 @@ pub enum Generator {
     #[default]
     Html,
     AvatarGroup,
+    React,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,6 +218,9 @@ mod tests {
             template: Some("<button>old</button>".into()),
             code: "<Button />".into(),
             controls: Vec::new(),
+            component_source: None,
+            component_export: None,
+            component_name: None,
         });
         catalog.merge_stories(vec![Story {
             id: "button".into(),
@@ -219,8 +231,34 @@ mod tests {
             template: Some("<button>new</button>".into()),
             code: "<Button />".into(),
             controls: Vec::new(),
+            component_source: None,
+            component_export: None,
+            component_name: None,
         }]);
         assert_eq!(catalog.stories.len(), 1);
         assert_eq!(catalog.story("button").unwrap().title, "New");
+    }
+
+    #[test]
+    fn component_source_is_not_serialized() {
+        let story = Story {
+            id: "button".into(),
+            title: "Button".into(),
+            section: "Components".into(),
+            description: String::new(),
+            generator: Generator::React,
+            template: None,
+            code: "<Button />".into(),
+            controls: Vec::new(),
+            component_source: Some("export function Button() {}".into()),
+            component_export: Some("Button".into()),
+            component_name: Some("Button".into()),
+        };
+        let value = serde_json::to_value(&story).unwrap();
+        assert!(
+            value.get("component_source").is_none(),
+            "component_source must stay off the wire: {value}"
+        );
+        assert_eq!(value["component_export"], "Button");
     }
 }

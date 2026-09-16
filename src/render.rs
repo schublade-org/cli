@@ -5,6 +5,14 @@ use crate::catalog::{Control, Generator, Story};
 pub struct RenderedStory {
     pub html: String,
     pub code: String,
+    pub react: Option<ReactRender>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReactRender {
+    pub source: String,
+    pub export_name: String,
+    pub props: serde_json::Map<String, Value>,
 }
 
 pub fn render_story(story: &Story, values: &Value) -> Result<RenderedStory, String> {
@@ -14,6 +22,7 @@ pub fn render_story(story: &Story, values: &Value) -> Result<RenderedStory, Stri
             merged.insert(key.clone(), value.clone());
         }
     }
+    let props = merged.clone();
     let values = with_attr_tokens(merged);
     let html = match story.generator {
         Generator::AvatarGroup => render_avatar_group(&values),
@@ -24,11 +33,30 @@ pub fn render_story(story: &Story, values: &Value) -> Result<RenderedStory, Stri
                 .ok_or_else(|| format!("story '{}' is missing a template", story.id))?;
             interpolate(template, &values, true)
         }
+        Generator::React => String::new(),
+    };
+    let react = match story.generator {
+        Generator::React => {
+            let source = story.component_source.clone().ok_or_else(|| {
+                format!("story '{}' is missing component source", story.id)
+            })?;
+            Some(ReactRender {
+                source,
+                export_name: story
+                    .component_export
+                    .clone()
+                    .or_else(|| story.component_name.clone())
+                    .unwrap_or_else(|| "default".into()),
+                props,
+            })
+        }
+        Generator::Html | Generator::AvatarGroup => None,
     };
 
     Ok(RenderedStory {
         html,
         code: interpolate(&story.code, &values, false),
+        react,
     })
 }
 

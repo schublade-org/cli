@@ -1,4 +1,4 @@
 name = "Story files"
 
 # Fallback catalog — no [[stories]] here. The CLI discovers
-# components/*.stories.toml and merges them into this catalog.
+# components/*.stories.jsx and *.stories.js and merges them into this catalog.
