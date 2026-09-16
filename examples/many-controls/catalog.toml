@@ -1,0 +1,157 @@
+name = "Many controls"
+
+[[stories]]
+id = "filter-bar"
+title = "Filter bar"
+section = "Controls"
+description = "A dense settings surface. Every control kind, enough rows to scroll the right rail."
+code = """<FilterBar
+  query=\"{{query}}\"
+  status=\"{{status}}\"
+  sort=\"{{sort}}\"
+  tone=\"{{tone}}\"
+  size=\"{{size}}\"
+  pageSize={{{pageSize}}}
+  maxResults={{{maxResults}}}
+  density={{{density}}}
+  includeArchived={{{includeArchived}}}
+  unreadOnly={{{unreadOnly}}}
+  showCount={{{showCount}}}
+  assignedTo=\"{{assignee}}\"
+/>"""
+template = """
+<div class=\"example-stack\">
+  <div class=\"example-row\">
+    <button class=\"btn\" data-variant=\"{{tone}}\" data-size=\"{{size}}\" type=\"button\">{{query}}</button>
+    <span class=\"badge\" data-tone=\"neutral\">{{status}}</span>
+    <span class=\"chip\" data-selected=\"{{unreadOnly}}\"><span>{{assignee}}</span></span>
+  </div>
+  <p class=\"ag-caption\">{{sort}} · {{pageSize}} / page · density {{density}}</p>
+</div>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "query"
+label = "Query"
+default = "Apply filters"
+
+[[stories.controls]]
+kind = "text"
+id = "assignee"
+label = "Assignee"
+default = "Lena Meier"
+
+[[stories.controls]]
+kind = "select"
+id = "status"
+label = "Status"
+default = "open"
+
+[[stories.controls.options]]
+value = "open"
+label = "Open"
+
+[[stories.controls.options]]
+value = "in-review"
+label = "In review"
+
+[[stories.controls.options]]
+value = "done"
+label = "Done"
+
+[[stories.controls]]
+kind = "select"
+id = "sort"
+label = "Sort"
+default = "updated"
+
+[[stories.controls.options]]
+value = "updated"
+label = "Last updated"
+
+[[stories.controls.options]]
+value = "created"
+label = "Created"
+
+[[stories.controls.options]]
+value = "title"
+label = "Title"
+
+[[stories.controls]]
+kind = "select"
+id = "tone"
+label = "Button variant"
+default = "primary"
+
+[[stories.controls.options]]
+value = "primary"
+label = "Primary"
+
+[[stories.controls.options]]
+value = "secondary"
+label = "Secondary"
+
+[[stories.controls.options]]
+value = "ghost"
+label = "Ghost"
+
+[[stories.controls]]
+kind = "select"
+id = "size"
+label = "Size"
+default = "md"
+
+[[stories.controls.options]]
+value = "sm"
+label = "Small"
+
+[[stories.controls.options]]
+value = "md"
+label = "Medium"
+
+[[stories.controls.options]]
+value = "lg"
+label = "Large"
+
+[[stories.controls]]
+kind = "number"
+id = "pageSize"
+label = "Page size"
+min = 5
+max = 100
+default = 25
+
+[[stories.controls]]
+kind = "number"
+id = "maxResults"
+label = "Max results"
+min = 10
+max = 500
+default = 100
+
+[[stories.controls]]
+kind = "number"
+id = "density"
+label = "Density"
+min = 1
+max = 8
+default = 3
+
+[[stories.controls]]
+kind = "boolean"
+id = "includeArchived"
+label = "Include archived"
+default = false
+
+[[stories.controls]]
+kind = "boolean"
+id = "unreadOnly"
+label = "Unread only"
+default = true
+
+[[stories.controls]]
+kind = "boolean"
+id = "showCount"
+label = "Show count"
+default = true
