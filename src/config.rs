@@ -8,9 +8,15 @@ const DEFAULT_TOML: &str = include_str!("../schublade.toml");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    /// Workshop name when no catalog.toml is present.
+    #[serde(default)]
+    pub name: Option<String>,
     /// Path to catalog.toml. Relative paths resolve against the config file directory.
     #[serde(default)]
     pub catalog: Option<PathBuf>,
+    /// Directory to walk for `*.stories.toml` files. Relative to the config file.
+    #[serde(default)]
+    pub stories: Option<PathBuf>,
     #[serde(default)]
     pub server: ServerConfig,
     #[serde(default)]
@@ -142,13 +148,20 @@ impl AppConfig {
         if let Some(port) = args.port {
             self.server.port = port;
         }
+        if let Some(name) = &args.name {
+            self.name = Some(name.clone());
+        }
+        if let Some(stories) = &args.stories {
+            self.stories = Some(stories.clone());
+        }
     }
 
     /// Resolve the catalog file to load.
     ///
     /// Order: `--catalog`, then `catalog` in schublade.toml (relative to that
     /// file), then `catalog.toml` next to the config file, then `catalog.toml`
-    /// in the working directory. `None` means the bundled default catalog.
+    /// in the working directory. `None` means the bundled default catalog,
+    /// unless story files are configured — then the catalog is omitted.
     pub fn resolve_catalog_path(
         &self,
         cli_catalog: Option<&Path>,
@@ -179,6 +192,29 @@ impl AppConfig {
         }
 
         Ok(None)
+    }
+
+    pub fn resolve_stories_path(
+        &self,
+        cli_stories: Option<&Path>,
+        config_path: Option<&Path>,
+    ) -> Result<Option<PathBuf>, String> {
+        if let Some(explicit) = cli_stories {
+            if !explicit.exists() {
+                return Err(format!("stories directory not found: {}", explicit.display()));
+            }
+            return Ok(Some(explicit.to_path_buf()));
+        }
+
+        let Some(configured) = &self.stories else {
+            return Ok(None);
+        };
+
+        let resolved = resolve_against(configured, config_path);
+        if !resolved.exists() {
+            return Err(format!("stories directory not found: {}", resolved.display()));
+        }
+        Ok(Some(resolved))
     }
 }
 
@@ -288,6 +324,7 @@ mod tests {
         assert_eq!(config.server.port, 47291);
         assert_eq!(config.theme.trigger, ThemeTrigger::DataAttribute);
         assert!(config.a11y.rules.contains(&A11yRule::ImageAlt));
+        assert!(config.stories.is_none());
     }
 
     #[test]
@@ -333,6 +370,25 @@ mod tests {
     }
 
     #[test]
+    fn stories_path_is_relative_to_config_file() {
+        let dir = std::env::temp_dir().join("schublade-stories-rel");
+        let stories = dir.join("components");
+        std::fs::create_dir_all(&stories).unwrap();
+        let config_file = dir.join("schublade.toml");
+        std::fs::write(&config_file, "stories = \"./components\"\n").unwrap();
+
+        let (config, path) = AppConfig::load(Some(&config_file)).unwrap();
+        let resolved = config
+            .resolve_stories_path(None, path.as_deref())
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            resolved.canonicalize().unwrap(),
+            stories.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
     fn missing_cli_catalog_errors() {
         let config = AppConfig::default();
         let missing = PathBuf::from("/tmp/schublade-does-not-exist-catalog.toml");
@@ -340,6 +396,16 @@ mod tests {
             .resolve_catalog_path(Some(&missing), None)
             .unwrap_err();
         assert!(error.contains("catalog not found"));
+    }
+
+    #[test]
+    fn missing_stories_dir_errors() {
+        let config = AppConfig {
+            stories: Some(PathBuf::from("./nope")),
+            ..AppConfig::default()
+        };
+        let error = config.resolve_stories_path(None, None).unwrap_err();
+        assert!(error.contains("stories directory not found"));
     }
 
     #[derive(Deserialize)]
