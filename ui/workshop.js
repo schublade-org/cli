@@ -108,7 +108,7 @@
     setStoryNavEnabled(false);
     storyTitle.textContent = "No stories";
     storyDesc.textContent =
-      "This catalog is empty. Add [[stories]] blocks to catalog.toml and restart the server.";
+      "This catalog is empty. Add *.stories.toml files or [[stories]] in catalog.toml and restart the server.";
     controlList.innerHTML = "";
     const empty = document.createElement("p");
     empty.className = "controls-empty";

@@ -29,6 +29,14 @@ pub struct ServeArgs {
     #[arg(long)]
     pub catalog: Option<std::path::PathBuf>,
 
+    /// Directory of `*.stories.toml` files (overrides `stories` in schublade.toml)
+    #[arg(long)]
+    pub stories: Option<std::path::PathBuf>,
+
+    /// Catalog name when no catalog.toml is present
+    #[arg(long)]
+    pub name: Option<String>,
+
     /// Bind address
     #[arg(long)]
     pub host: Option<String>,
@@ -43,6 +51,8 @@ impl Default for ServeArgs {
         Self {
             config: None,
             catalog: None,
+            stories: None,
+            name: None,
             host: None,
             port: None,
         }

@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::catalog::{Generator, Story};
+use crate::catalog::{Control, Generator, Story};
 
 pub struct RenderedStory {
     pub html: String,
@@ -8,7 +8,13 @@ pub struct RenderedStory {
 }
 
 pub fn render_story(story: &Story, values: &Value) -> Result<RenderedStory, String> {
-    let values = with_attr_tokens(values.as_object().cloned().unwrap_or_default());
+    let mut merged = defaults_from_controls(&story.controls);
+    if let Some(object) = values.as_object() {
+        for (key, value) in object {
+            merged.insert(key.clone(), value.clone());
+        }
+    }
+    let values = with_attr_tokens(merged);
     let html = match story.generator {
         Generator::AvatarGroup => render_avatar_group(&values),
         Generator::Html => {
@@ -24,6 +30,21 @@ pub fn render_story(story: &Story, values: &Value) -> Result<RenderedStory, Stri
         html,
         code: interpolate(&story.code, &values, false),
     })
+}
+
+fn defaults_from_controls(controls: &[Control]) -> serde_json::Map<String, Value> {
+    let mut values = serde_json::Map::new();
+    for control in controls {
+        let value = match control {
+            Control::Select { default, .. } | Control::Text { default, .. } => {
+                Value::String(default.clone())
+            }
+            Control::Number { default, .. } => Value::Number((*default).into()),
+            Control::Boolean { default, .. } => Value::Bool(*default),
+        };
+        values.insert(control.id().to_string(), value);
+    }
+    values
 }
 
 fn with_attr_tokens(
