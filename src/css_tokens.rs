@@ -18,6 +18,7 @@
 //! | `--font-weight-*` | font-weight | not a family |
 //! | `--leading-*` | line-height | |
 //! | `--tracking-*` | letter-spacing | |
+//! | `--tab-size-*` | tab-size | |
 //! | `--spacing`, `--spacing-*` | spacing | |
 //! | `--radius`, `--radius-*` | radius | |
 //! | `--shadow-*` | box-shadow | |
@@ -25,6 +26,7 @@
 //! | `--drop-shadow-*` | drop-shadow | |
 //! | `--blur-*` | blur | |
 //! | `--perspective-*` | perspective | |
+//! | `--zoom-*` | zoom | |
 //! | `--aspect-*` | aspect-ratio | |
 //! | `--ease-*` | easing | |
 //! | `--animate-*` | animation | |
@@ -212,11 +214,13 @@ fn classify(name: &str, value: &str) -> Kind {
 const GROUP_PREFIXES: &[(&str, &str)] = &[
     ("leading", "leading"),
     ("tracking", "tracking"),
+    ("tab-size", "tab-size"),
     ("spacing", "spacing"),
     ("radius", "radius"),
     ("shadow", "shadow"),
     ("blur", "blur"),
     ("perspective", "perspective"),
+    ("zoom", "zoom"),
     ("aspect", "aspect"),
     ("ease", "ease"),
     ("animate", "animate"),
@@ -340,6 +344,11 @@ fn push_color(colors: &mut Vec<ColorScale>, family: &str, step: &str, value: &st
         format!("--color-{family}-{step}")
     };
     if let Some(scale) = colors.iter_mut().find(|scale| scale.id == family) {
+        if let Some(existing) = scale.steps.iter_mut().find(|item| item.step == step) {
+            existing.value = value.to_string();
+            existing.token = token;
+            return;
+        }
         scale.steps.push(ColorStep {
             step: step.to_string(),
             value: value.to_string(),
@@ -366,6 +375,11 @@ fn push_group_row(groups: &mut Vec<TokenGroup>, id: &'static str, token: String,
         source: TokenSource::Css,
     };
     if let Some(group) = groups.iter_mut().find(|group| group.id == id) {
+        if let Some(existing) = group.rows.iter_mut().find(|item| item.token == row.token) {
+            existing.value = row.value;
+            existing.source = row.source;
+            return;
+        }
         group.rows.push(row);
         return;
     }
@@ -568,10 +582,26 @@ fn matching_paren(source: &str) -> Option<usize> {
 }
 
 fn split_var_args(inner: &str) -> (&str, Option<&str>) {
-    match inner.split_once(',') {
-        Some((name, fallback)) => (name.trim(), Some(fallback.trim())),
-        None => (inner.trim(), None),
+    let mut depth = 0i32;
+    let mut quote: Option<char> = None;
+    for (index, ch) in inner.char_indices() {
+        if let Some(q) = quote {
+            if ch == q {
+                quote = None;
+            }
+            continue;
+        }
+        match ch {
+            '\'' | '"' => quote = Some(ch),
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            ',' if depth == 0 => {
+                return (inner[..index].trim(), Some(inner[index + 1..].trim()));
+            }
+            _ => {}
+        }
     }
+    (inner.trim(), None)
 }
 
 #[cfg(test)]
@@ -592,6 +622,7 @@ mod tests {
   --font-weight-bold: 700;
   --leading-tight: 1.25;
   --tracking-wide: 0.025em;
+  --tab-size-4: 4;
   --spacing: 0.25rem;
   --spacing-4: 1rem;
   --radius-md: 0.375rem;
@@ -600,6 +631,7 @@ mod tests {
   --drop-shadow-sm: 0 1px 1px rgb(0 0 0 / 0.05);
   --blur-sm: 8px;
   --perspective-dramatic: 100px;
+  --zoom-compact: 0.9;
   --aspect-video: 16 / 9;
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --animate-spin: spin 1s linear infinite;
@@ -640,6 +672,7 @@ mod tests {
         for id in [
             "leading",
             "tracking",
+            "tab-size",
             "spacing",
             "radius",
             "shadow",
@@ -647,6 +680,7 @@ mod tests {
             "drop-shadow",
             "blur",
             "perspective",
+            "zoom",
             "aspect",
             "ease",
             "animate",
@@ -730,8 +764,10 @@ mod tests {
             "font-weight",
             "leading",
             "tracking",
+            "tab-size",
             "blur",
             "perspective",
+            "zoom",
             "aspect",
             "ease",
             "animate",
@@ -740,5 +776,63 @@ mod tests {
         ] {
             assert!(ids.contains(&id), "missing {id} in {ids:?}");
         }
+    }
+
+    #[test]
+    fn var_fallback_keeps_commas_inside_functions() {
+        let set = parse_tailwind_tokens(
+            r#"
+@theme {
+  --color-fg: var(--color-missing, rgb(15, 23, 42));
+  --spacing-4: var(--missing-space, calc(1rem + 2px));
+}
+"#,
+        )
+        .unwrap();
+        let fg = set.colors.iter().find(|scale| scale.id == "fg").unwrap();
+        assert_eq!(fg.steps[0].value, "rgb(15, 23, 42)");
+        let spacing = set
+            .groups
+            .iter()
+            .find(|group| group.id == "spacing")
+            .unwrap();
+        assert_eq!(
+            spacing
+                .rows
+                .iter()
+                .find(|row| row.token == "--spacing-4")
+                .unwrap()
+                .value,
+            "calc(1rem + 2px)"
+        );
+    }
+
+    #[test]
+    fn later_declaration_wins_for_the_same_token() {
+        let set = parse_tailwind_tokens(
+            r#"
+@theme {
+  --color-yellow-50: #aaaaaa;
+  --color-yellow-50: #fffbeb;
+  --spacing-4: 2rem;
+  --spacing-4: 1rem;
+}
+"#,
+        )
+        .unwrap();
+        let yellow = set
+            .colors
+            .iter()
+            .find(|scale| scale.id == "yellow")
+            .unwrap();
+        assert_eq!(yellow.steps.len(), 1);
+        assert_eq!(yellow.steps[0].value, "#fffbeb");
+        let spacing = set
+            .groups
+            .iter()
+            .find(|group| group.id == "spacing")
+            .unwrap();
+        assert_eq!(spacing.rows.len(), 1);
+        assert_eq!(spacing.rows[0].value, "1rem");
     }
 }

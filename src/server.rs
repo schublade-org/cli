@@ -879,6 +879,8 @@ mod tests {
         assert!(loaded.tokens.groups.iter().any(|group| group.id == "spacing"));
         assert!(loaded.tokens.groups.iter().any(|group| group.id == "radius"));
         assert!(loaded.tokens.groups.iter().any(|group| group.id == "shadow"));
+        assert!(loaded.tokens.groups.iter().any(|group| group.id == "tab-size"));
+        assert!(loaded.tokens.groups.iter().any(|group| group.id == "zoom"));
         assert!(!loaded
             .tokens
             .typography

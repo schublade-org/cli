@@ -265,6 +265,7 @@ Adapter 4 is Tailwind-only. It classifies known `@theme` prefixes and ignores un
 | `--font-weight-*` | font-weight |
 | `--leading-*` | line-height |
 | `--tracking-*` | letter-spacing |
+| `--tab-size-*` | tab-size |
 | `--spacing*` | spacing |
 | `--radius*` | radius |
 | `--shadow-*` | box-shadow |
@@ -272,6 +273,7 @@ Adapter 4 is Tailwind-only. It classifies known `@theme` prefixes and ignores un
 | `--drop-shadow-*` | drop-shadow |
 | `--blur-*` | blur |
 | `--perspective-*` | perspective |
+| `--zoom-*` | zoom |
 | `--aspect-*` | aspect-ratio |
 | `--ease-*` | easing |
 | `--animate-*` | animation |

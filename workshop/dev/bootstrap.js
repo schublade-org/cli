@@ -351,6 +351,16 @@ function mockTokens() {
         name: "Shadow",
         rows: [{ token: "--shadow-sm", value: "0 1px 2px rgb(0 0 0 / 0.05)", source: "css" }],
       },
+      {
+        id: "tab-size",
+        name: "Tab size",
+        rows: [{ token: "--tab-size-4", value: "4", source: "css" }],
+      },
+      {
+        id: "zoom",
+        name: "Zoom",
+        rows: [{ token: "--zoom-compact", value: "0.9", source: "css" }],
+      },
     ],
   };
 }

@@ -29,6 +29,7 @@
   --leading-normal: 1.5;
   --tracking-tight: -0.025em;
   --tracking-wide: 0.025em;
+  --tab-size-4: 4;
 
   --spacing: 0.25rem;
   --spacing-1: 0.25rem;
@@ -47,6 +48,7 @@
 
   --blur-sm: 8px;
   --perspective-dramatic: 100px;
+  --zoom-compact: 0.9;
   --aspect-video: 16 / 9;
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);

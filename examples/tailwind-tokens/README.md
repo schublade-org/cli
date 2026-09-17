@@ -14,6 +14,7 @@ Adapter 4 reads a Tailwind `@theme` CSS file. This is not a generic custom-prope
 | `--font-weight-*` | font-weight |
 | `--leading-*` | line-height |
 | `--tracking-*` | letter-spacing |
+| `--tab-size-*` | tab-size |
 | `--spacing*` | spacing |
 | `--radius*` | radius |
 | `--shadow-*` | box-shadow |
@@ -21,6 +22,7 @@ Adapter 4 reads a Tailwind `@theme` CSS file. This is not a generic custom-prope
 | `--drop-shadow-*` | drop-shadow |
 | `--blur-*` | blur |
 | `--perspective-*` | perspective |
+| `--zoom-*` | zoom |
 | `--aspect-*` | aspect-ratio |
 | `--ease-*` | easing |
 | `--animate-*` | animation |
