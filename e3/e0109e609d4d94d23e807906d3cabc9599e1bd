@@ -1,0 +1,51 @@
+ui/chrome/Controls.js
+  s_5224d267af9c0b::t_536689463fa091 2,5-8,10-99,164
+  s_5224d267af9c0b::t_be2fb8d6688312 3-4,104-111,113-144,147
+workshop/build.mjs
+  s_5224d267af9c0b::t_9c4c8a0ef20051 18
+ui/chrome/Inspector.js
+  s_5224d267af9c0b::t_9f026d23b257e2 2,28-29,42-44,47-73,77,87-129
+  s_5224d267af9c0b::t_536689463fa091 18,75,78-84
+workshop/dev/bootstrap.js
+  s_5224d267af9c0b::t_b76347ff0d47e6 92-117
+workshop/dev/mock.test.mjs
+  s_5224d267af9c0b::t_36787cbadb5d58 16-24
+workshop/ResizeHandle.jsx
+  s_5224d267af9c0b::t_cd601c9b9e08e2 1-91
+ui/chrome/ResizeHandle.js
+  s_5224d267af9c0b::t_536689463fa091 1-85
+workshop/Controls.jsx
+  s_5224d267af9c0b::t_a00b2b80b78cdb 1,4-9,11-43,45-61,64,90,95-124,194,202
+  s_5224d267af9c0b::t_442e2aa668f6f4 2-3,130-135,137-142,144-175,177
+workshop/Inspector.jsx
+  s_5224d267af9c0b::t_f5bf281c1e92ff 1,30-32,45-46,55-77,79-84,86,94
+  s_5224d267af9c0b::t_3c25764c63f9b4 17,85,87-93
+  s_5224d267af9c0b::t_598d95525843fc 47
+ui/index.html
+  s_5224d267af9c0b::t_b1375e7b0f5d03 22-23
+ui/workshop.css
+  s_5224d267af9c0b::t_572214c76af9bb 12,40-51,60,540-541,547-551,553-562,564-574,736-743,745-787,789-804,806-809,812-813
+  s_5224d267af9c0b::t_93f0ceec7920ba 61-72
+  s_5224d267af9c0b::t_f1434f3be5df59 234,414,591-593
+  s_5224d267af9c0b::t_00a88d5bfcee4f 352,357-359,361-370,372-386,393-406,409
+  s_5224d267af9c0b::t_616863aba4a190 360,371,552,563
+  s_5224d267af9c0b::t_a371e8b60fadc1 598,744,788,805
+  s_5224d267af9c0b::t_a588a2221909d4 617-622,624-625,629,631-712
+  s_5224d267af9c0b::t_072ce5a02e6737 1073-1076
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e3e0109e609d4d94d23e807906d3cabc9599e1bd",
+  "prompts": {},
+  "sessions": {
+    "s_5224d267af9c0b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0af07-cab6-73a3-9d34-6c22dddbb4ec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "nick <n@nick.qa>"
+    }
+  }
+}
