@@ -1,5 +1,6 @@
 /target
 /dist
+/workshop/dist
 /node_modules
 /ui/workshop.js
 .DS_Store

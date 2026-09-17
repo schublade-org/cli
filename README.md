@@ -209,7 +209,7 @@ If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives ar
 
 ## What you get
 
-- **CLI + server** — `clap` + `axum`, published as the `schublade` npm package. The workshop chrome is a React app (Base UI + Tabler icons) embedded in the binary. `npx schublade serve` hot-reloads catalog and stories; `npx schublade build` writes the same workshop as static HTML, including the configured favicon and logo.
+- **CLI + server** — `clap` + `axum`, published as the `schublade` npm package. The workshop chrome is a React app (Base UI + Tabler icons) embedded in the binary. In this repo, `npm run dev:workshop` iterates that chrome with mocks (Vite; no Rust). `npm run build:workshop` writes committed `ui/chrome/`. `npx schublade serve` embeds that output and hot-reloads catalog and stories; `npx schublade build` writes the same workshop as static HTML, including the configured favicon and logo. Consumers never run Vite.
 - **Brand** — `logo` and `favicon` in `schublade.toml`. The catalog name and mark are written into `index.html` before first paint so the wordmark does not flash “Schublade”.
 - **Story discovery** — `*.stories.jsx` / `*.stories.js` next to components (TOML still works), plus `catalog.toml` as fallback.
 - **React preview** — `/api/render` returns the imported component source and current props. The iframe mounts React from vendored UMD plus a small local JSX transform. No npm toolchain in the consumer repo.
@@ -254,14 +254,40 @@ An empty catalog (name only, no `[[stories]]` and no story files) is valid — t
 
 ## Develop
 
-Rust 1.85 or newer (`rust-toolchain.toml` pins 1.85.0). Node 18+ is only required to exercise the npm wrapper.
+Two loops. Consumers still need no JS toolchain — Vite and npm here are **repo-author only**.
+
+### Chrome (Vite + mocks)
+
+Iterate the workshop React chrome with mock catalog / story / control / a11y data. No Rust.
+
+```bash
+npm install
+npm run dev:workshop
+```
+
+Opens http://127.0.0.1:5173. Sidebar, inspector, controls, viewport, and theme run against `workshop/dev/` mocks. This does **not** replace catalog or story hot-reload in `schublade serve`.
+
+### Integration (`serve`)
+
+Compile chrome into the files the CLI embeds, then run the real server (or Cargo):
+
+```bash
+npm run build:workshop   # writes committed ui/chrome/ via esbuild — serve does not run Node or Vite
+schublade serve
+# or
+cargo run -- serve
+```
+
+`serve` still watches catalog.toml and story files and reloads over `/api/events`. Use that loop to test the real catalog, not Vite.
+
+### CLI tests
+
+Rust 1.85 or newer (`rust-toolchain.toml` pins 1.85.0). Node 18+ is only required to exercise the npm wrapper and this repo’s chrome tooling.
 
 ```bash
 cargo test
 npm install
-npm run build:workshop   # compile workshop/*.jsx into ui/chrome/*.js
 npm run test:npm
-cargo run -- serve
 cargo run -- serve --config examples/story-files/schublade.toml
 cargo run -- build --config examples/story-files/schublade.toml --out dist/story-files
 npx schublade --help
