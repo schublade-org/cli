@@ -70,6 +70,10 @@ pub fn inject_bootstrap(html: &str, bootstrap_json: &str) -> String {
     }
 
     for marker in [
+        "<script type=\"module\" src=\"./chrome/main.js\"",
+        "<script type=\"module\" src=\"/chrome/main.js\"",
+        "<script src=\"./chrome/main.js\"",
+        "<script src=\"/chrome/main.js\"",
         "<script src=\"./workshop-boot.js\"",
         "<script src=\"/workshop-boot.js\"",
         "<script src=\"./workshop.js\"",
@@ -151,7 +155,7 @@ mod tests {
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" id="schublade-favicon" />
   </head><body>
     <div id="root"></div>
-    <script src="/workshop.js"></script>
+    <script type="module" src="/chrome/main.js"></script>
   </body></html>"#;
         let out = inject_workshop_shell(
             html,
