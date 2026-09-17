@@ -6,7 +6,7 @@ const CONTROL_KINDS = new Set(["text", "select", "boolean", "number"]);
 const kinds = new Set();
 const stories = bootstrap.catalog.stories;
 
-assert.equal(bootstrap.catalog.name, "Aarau Designsystem");
+assert.equal(bootstrap.catalog.name, "Demo catalog");
 assert.equal(bootstrap.brand.name, bootstrap.catalog.name);
 assert.equal(bootstrap.theme.trigger, "data-attribute");
 assert.equal(bootstrap.a11y.enabled, true);
@@ -20,6 +20,10 @@ assert.equal(
   "Default,Ghost,Disabled"
 );
 assert.ok(stories.some((story) => story.section === "Foundations" && story.controls.length === 0));
+assert.equal(bootstrap.catalog.pages.length, 2);
+assert.equal(bootstrap.catalog.pages[0].id, "colors");
+assert.equal(bootstrap.tokens.colors.length, 5);
+assert.ok(bootstrap.tokens.typography.styles.some((style) => style.id === "display-xl"));
 
 for (const story of stories) {
   assert.ok(story.id && story.title && story.item && story.section);

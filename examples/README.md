@@ -24,7 +24,7 @@ npx schublade serve --config examples/story-files/schublade.toml
 
 CI mirrors each folder to `schublade-org/examples-<NAME>` (see the root README, **Example repo sync**). `examples/` here is the source of truth.
 
-The default Aarau catalog at the repo root is unchanged. Use `npx schublade serve` or `cargo run -- serve` for that.
+The default catalog at the repo root is unchanged. Use `npx schublade serve` or `cargo run -- serve` for that.
 
 | Example | What it exercises | Port |
 | --- | --- | --- |

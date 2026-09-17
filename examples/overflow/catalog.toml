@@ -81,7 +81,7 @@ template = """
 kind = "text"
 id = "label"
 label = "Label"
-default = "Save draft and notify the Aarau design review board"
+default = "Save draft and notify the design review board"
 
 [[stories]]
 id = "long-accordion"

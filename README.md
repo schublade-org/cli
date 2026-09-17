@@ -4,7 +4,7 @@ A Storybook-like component workshop that runs from a **Rust CLI**. Consumers sta
 
 This is a POC/MVP. Feature parity with Storybook is not a goal. There is no plugin system.
 
-The bundled demo catalog is **Aarau Designsystem**: left story nav with grouped sub-drawers, an isolated center canvas, right-hand controls, and a Code Usage / a11y inspector under the preview.
+The bundled demo catalog is a small component kit: left story nav with grouped sub-drawers, an isolated center canvas, right-hand controls, and a Code Usage / a11y inspector under the preview.
 
 ## Install
 
@@ -154,7 +154,7 @@ npx schublade serve --config ./schublade.toml
 
 Each `run.sh` / `build.sh` uses **`npx schublade`** when the folder is a standalone checkout (the mirrored `schublade-org/examples-<name>` repos). Inside this monorepo they fall back to `cargo run --manifest-path ../../Cargo.toml` so local CLI changes apply. `--config` loads that folder’s `schublade.toml`; `catalog` and `stories` paths are resolved next to it.
 
-The root Aarau catalog stays the default demo (`npx schublade serve` / `cargo run -- serve`). See [`examples/README.md`](examples/README.md).
+The root catalog stays the default demo (`npx schublade serve` / `cargo run -- serve`). See [`examples/README.md`](examples/README.md).
 
 ## Example repo sync
 
@@ -220,6 +220,7 @@ If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives ar
 - **Native a11y** — a small DOM checker in the preview iframe. Enable, disable, or drop rules in `schublade.toml`.
 - **AGENTS.md** — one renderer writes `GET /AGENTS.md`, `GET /{id}/AGENTS.md`, and the same paths from `schublade build`. Content is catalog usage + controls, not source dumps or hash URLs.
 - **Demo stories** — Accordion, Avatar group, Badge, Button (Default / Ghost / Disabled), Chip.
+- **Docs / tokens** — `*.mdx` pages for color scales and typography. Tokens come from `schublade.toml` (manual) and/or a CSS custom-property file. CSF + `catalog.toml` stay the story source of truth.
 
 ## Configure
 
@@ -228,8 +229,18 @@ If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives ar
 ```toml
 catalog = "./catalog.toml"
 stories = "./components"   # optional; walk for *.stories.js(x) / *.stories.toml
+docs = "./docs"            # optional; walk for docs/token *.mdx pages
 logo = "./logo.svg"        # optional workshop wordmark
 favicon = "./favicon.svg"  # optional; copied into `schublade build` output
+
+# Token adapters 3 (manual) and 4 (CSS). 1 Figma MCP and 2 Paper MCP are sketched only.
+[tokens]
+css = "./tokens.css"
+
+[[tokens.colors]]
+name = "Ink"
+id = "ink"
+steps = { 50 = "#f8fafc", 900 = "#0f172a" }
 
 [theme]
 trigger = "data-attribute" # or "class-name", "local-storage"
@@ -250,7 +261,7 @@ An empty catalog (name only, no `[[stories]]` and no story files) is valid — t
 
 | Region | Role |
 | --- | --- |
-| Left | Catalog mark + grouped story drawers (`Button / Ghost` → Button → Ghost) |
+| Left | Catalog mark + docs pages and grouped story drawers (`Button / Ghost` → Button → Ghost) |
 | Center | Sandboxed canvas |
 | Right | Controls for the selected story, with a divider under the description |
 | Bottom | Inspector block: Code Usage and a11y tabs; breakpoints and light/dark as segmented controls |
