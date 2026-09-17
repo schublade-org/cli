@@ -13,7 +13,15 @@ assert.equal(bootstrap.a11y.enabled, true);
 assert.ok(bootstrap.a11y.rules.some((rule) => rule.id === "button-name"));
 assert.equal(bootstrap.static, undefined);
 
-assert.ok(stories.find((story) => story.id === "avatar-group"));
+const avatarGroup = stories.find((story) => story.id === "avatar-group");
+assert.ok(avatarGroup);
+assert.equal(avatarGroup.props.length, 4);
+assert.deepEqual(avatarGroup.props[0], {
+  name: "size",
+  description: "Controls the avatar diameter and overlap.",
+  type: "String",
+  default: '"md"',
+});
 assert.ok(stories.find((story) => story.id === "button-ghost"));
 assert.equal(
   stories.filter((story) => story.group === "Button").map((story) => story.item).join(","),

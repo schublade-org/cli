@@ -89,6 +89,32 @@ export const bootstrap = {
   <span class="ag-face">+{{visible}}</span>
 </div>
 `,
+        props: [
+          {
+            name: "size",
+            description: "Controls the avatar diameter and overlap.",
+            type: "String",
+            default: '"md"',
+          },
+          {
+            name: "total",
+            description: "Total number of people represented by the group.",
+            type: "Number",
+            default: "7",
+          },
+          {
+            name: "visible",
+            description: "Maximum number of visible avatars before the overflow count.",
+            type: "Number",
+            default: "4",
+          },
+          {
+            name: "showCount",
+            description: "Shows the remaining member count after the visible avatars.",
+            type: "Boolean",
+            default: "true",
+          },
+        ],
         controls: [
           {
             kind: "select",

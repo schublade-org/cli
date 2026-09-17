@@ -15,6 +15,7 @@ await build({
     "workshop/DocsPage.jsx",
     "workshop/IconButton.jsx",
     "workshop/Inspector.jsx",
+    "workshop/ResizeHandle.jsx",
     "workshop/Sidebar.jsx",
     "workshop/TokenGroups.jsx",
     "workshop/TypographyDocs.jsx",
