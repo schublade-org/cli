@@ -4,7 +4,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconMenu2,
-} from "@tabler/icons-react";
+} from "./icons.js";
 import { Controls } from "./Controls.jsx";
 import { IconButton } from "./IconButton.jsx";
 import { Inspector } from "./Inspector.jsx";
