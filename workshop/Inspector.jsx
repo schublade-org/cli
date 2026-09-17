@@ -10,7 +10,7 @@ import {
   IconDeviceTablet,
   IconMoon,
   IconSun,
-} from "@tabler/icons-react";
+} from "./icons.js";
 import { highlight } from "./highlight.js";
 import { IconButton } from "./IconButton.jsx";
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Collapsible } from "@base-ui/react/collapsible";
-import { IconChevronDown } from "@tabler/icons-react";
+import { IconChevronDown } from "./icons.js";
 import { groupStories, navItem } from "./groups.js";
 
 export function Sidebar({ catalogName, logoUrl, stories, storyId, onSelect, open, onClose }) {
