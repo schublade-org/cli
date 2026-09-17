@@ -17,6 +17,12 @@ pub struct Catalog {
 pub struct Story {
     pub id: String,
     pub title: String,
+    /// Parent drawer in the story nav, e.g. `Button` when title is `Button / Ghost`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    /// Row label inside a group, or the flat nav label when `group` is empty.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub item: String,
     pub section: String,
     pub description: String,
     #[serde(default)]
@@ -97,6 +103,40 @@ pub struct Bootstrap {
     pub catalog: Catalog,
     pub theme: ThemeConfig,
     pub a11y: A11yBootstrap,
+    pub brand: BrandBootstrap,
+    /// True when the workshop was written by `schublade build` and must render offline.
+    #[serde(default, rename = "static", skip_serializing_if = "is_false")]
+    pub static_site: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BrandBootstrap {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
+    pub favicon: String,
+}
+
+impl BrandBootstrap {
+    pub fn live(name: impl Into<String>, has_logo: bool) -> Self {
+        Self {
+            name: name.into(),
+            logo: has_logo.then(|| "/brand/logo".to_string()),
+            favicon: "/brand/favicon".into(),
+        }
+    }
+
+    pub fn static_site(
+        name: impl Into<String>,
+        logo_file: Option<String>,
+        favicon_file: String,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            logo: logo_file.map(|file| format!("./{file}")),
+            favicon: format!("./{favicon_file}"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -120,8 +160,9 @@ impl Catalog {
             None => DEFAULT_CATALOG.to_string(),
         };
 
-        let catalog: Catalog =
+        let mut catalog: Catalog =
             toml::from_str(&raw).map_err(|error| format!("catalog: {error}"))?;
+        catalog.finalize_nav();
         Ok((catalog, resolved))
     }
 
@@ -140,11 +181,44 @@ impl Catalog {
                 self.stories.push(story);
             }
         }
+        self.finalize_nav();
+    }
+
+    fn finalize_nav(&mut self) {
+        for story in &mut self.stories {
+            story.attach_nav_parts();
+        }
     }
 
     pub fn story(&self, id: &str) -> Option<&Story> {
         self.stories.iter().find(|story| story.id == id)
     }
+}
+
+impl Story {
+    pub fn attach_nav_parts(&mut self) {
+        let (group, item) = nav_parts(&self.title);
+        if self.group.is_none() {
+            self.group = group;
+        }
+        if self.item.is_empty() {
+            self.item = item;
+        }
+    }
+}
+
+/// Split `Button / Ghost` into a group drawer (`Button`) and item (`Ghost`).
+pub fn nav_parts(title: &str) -> (Option<String>, String) {
+    match title.split_once(" / ") {
+        Some((group, item)) if !group.trim().is_empty() && !item.trim().is_empty() => {
+            (Some(group.trim().to_string()), item.trim().to_string())
+        }
+        _ => (None, title.trim().to_string()),
+    }
+}
+
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 
 impl A11yBootstrap {
@@ -173,6 +247,9 @@ mod tests {
         assert_eq!(catalog.name, "Aarau Designsystem");
         assert!(catalog.story("avatar-group").is_some());
         assert!(catalog.stories.iter().any(|story| story.id == "button"));
+        let ghost = catalog.story("button-ghost").expect("button-ghost");
+        assert_eq!(ghost.group.as_deref(), Some("Button"));
+        assert_eq!(ghost.item, "Ghost");
     }
 
     #[test]
@@ -212,6 +289,8 @@ mod tests {
         catalog.stories.push(Story {
             id: "button".into(),
             title: "Old".into(),
+            group: None,
+            item: String::new(),
             section: "Components".into(),
             description: String::new(),
             generator: Generator::Html,
@@ -225,6 +304,8 @@ mod tests {
         catalog.merge_stories(vec![Story {
             id: "button".into(),
             title: "New".into(),
+            group: None,
+            item: String::new(),
             section: "Components".into(),
             description: String::new(),
             generator: Generator::Html,
@@ -244,6 +325,8 @@ mod tests {
         let story = Story {
             id: "button".into(),
             title: "Button".into(),
+            group: None,
+            item: String::new(),
             section: "Components".into(),
             description: String::new(),
             generator: Generator::React,
@@ -260,5 +343,42 @@ mod tests {
             "component_source must stay off the wire: {value}"
         );
         assert_eq!(value["component_export"], "Button");
+    }
+
+    #[test]
+    fn nav_parts_split_group_drawers() {
+        assert_eq!(
+            nav_parts("Button / Ghost"),
+            (Some("Button".into()), "Ghost".into())
+        );
+        assert_eq!(nav_parts("Accordion"), (None, "Accordion".into()));
+        assert_eq!(
+            nav_parts("Button /  Ghost"),
+            (Some("Button".into()), "Ghost".into())
+        );
+    }
+
+    #[test]
+    fn catalog_titles_fill_in_nav_parts() {
+        let path = std::env::temp_dir().join("schublade-nav-catalog.toml");
+        std::fs::write(
+            &path,
+            r#"
+name = "Nav"
+[[stories]]
+id = "button-ghost"
+title = "Button / Ghost"
+section = "Components"
+description = ""
+code = "<Button />"
+template = "<button>ghost</button>"
+"#,
+        )
+        .unwrap();
+        let (catalog, _) = Catalog::load(Some(&path)).unwrap();
+        let story = catalog.story("button-ghost").unwrap();
+        assert_eq!(story.group.as_deref(), Some("Button"));
+        assert_eq!(story.item, "Ghost");
+        let _ = std::fs::remove_file(&path);
     }
 }
