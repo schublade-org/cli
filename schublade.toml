@@ -5,6 +5,10 @@
 # examples/ ship their own schublade.toml + catalog.toml and invoke this CLI.
 catalog = "./catalog.toml"
 
+# Optional workshop chrome. Paths are relative to this file.
+# logo = "./logo.svg"
+# favicon = "./favicon.svg"
+
 # Optional: walk this directory for CSF-style `*.stories.toml` files.
 # Story files declare args/argTypes and include the real component template.
 # They merge with catalog.toml (story files win on id collisions).

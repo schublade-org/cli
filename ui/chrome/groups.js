@@ -1,0 +1,50 @@
+function navItem(story) {
+  return story.item || splitTitle(story.title).item;
+}
+function navGroup(story) {
+  if (story.group) return story.group;
+  return splitTitle(story.title).group;
+}
+function splitTitle(title) {
+  const index = String(title || "").indexOf(" / ");
+  if (index === -1) {
+    return { group: null, item: String(title || "").trim() };
+  }
+  const group = title.slice(0, index).trim();
+  const item = title.slice(index + 3).trim();
+  if (!group || !item) {
+    return { group: null, item: String(title || "").trim() };
+  }
+  return { group, item };
+}
+function groupStories(stories) {
+  const sections = [];
+  const bySection = /* @__PURE__ */ new Map();
+  for (const story of stories) {
+    const sectionName = story.section || "Components";
+    if (!bySection.has(sectionName)) {
+      const section2 = { name: sectionName, entries: [] };
+      bySection.set(sectionName, section2);
+      sections.push(section2);
+    }
+    const section = bySection.get(sectionName);
+    const group = navGroup(story);
+    if (!group) {
+      section.entries.push({ type: "story", story });
+      continue;
+    }
+    const last = section.entries[section.entries.length - 1];
+    if (last && last.type === "group" && last.name === group) {
+      last.stories.push(story);
+      continue;
+    }
+    section.entries.push({ type: "group", name: group, stories: [story] });
+  }
+  return sections;
+}
+export {
+  groupStories,
+  navGroup,
+  navItem,
+  splitTitle
+};

@@ -1,10 +1,11 @@
 use std::path::Path;
 
 use crate::assets::Assets;
-use crate::catalog::{A11yBootstrap, Bootstrap};
+use crate::catalog::{A11yBootstrap, Bootstrap, BrandBootstrap};
 use crate::cli::BuildArgs;
 use crate::config::AppConfig;
 use crate::server;
+use crate::shell;
 
 const VERCEL_JSON: &str = r#"{
   "cleanUrls": false,
@@ -22,14 +23,34 @@ pub fn run(args: BuildArgs) -> Result<(), String> {
     let (catalog, catalog_path, story_files) =
         server::load_workshop(&config, catalog_source.as_deref(), stories_root.as_deref())?;
 
+    let logo_path = config.resolve_logo_path(config_path.as_deref())?;
+    let favicon_path = config.resolve_favicon_path(config_path.as_deref())?;
+    let logo_file = logo_path
+        .as_deref()
+        .map(|path| shell::brand_public_filename(path, "logo"));
+    let favicon_file = favicon_path
+        .as_deref()
+        .map(|path| shell::brand_public_filename(path, "favicon"))
+        .unwrap_or_else(|| "favicon.svg".to_string());
+
     let bootstrap = Bootstrap {
         catalog: catalog.clone(),
         theme: config.theme.clone(),
         a11y: A11yBootstrap::from_config(config.a11y.enabled, &config.a11y.rules),
+        brand: BrandBootstrap::static_site(&catalog.name, logo_file.clone(), favicon_file.clone()),
+        static_site: true,
     };
     let bootstrap_json = serialize_static_bootstrap(&bootstrap, &catalog)?;
 
-    write_static_site(&args.out, &bootstrap_json)?;
+    write_static_site(
+        &args.out,
+        &bootstrap_json,
+        &catalog.name,
+        logo_path.as_deref(),
+        logo_file.as_deref(),
+        favicon_path.as_deref(),
+        &favicon_file,
+    )?;
 
     println!("Schublade {}", env!("CARGO_PKG_VERSION"));
     println!(
@@ -56,7 +77,7 @@ pub fn run(args: BuildArgs) -> Result<(), String> {
     if let Some(path) = config_path {
         println!("          config {}", path.display());
     }
-    println!("          index.html · preview.html · bootstrap.json");
+    println!("          index.html · preview.html · bootstrap.json · favicon");
     println!(
         "Deploy    any static host — point it at {}",
         args.out.display()
@@ -85,12 +106,28 @@ fn serialize_static_bootstrap(
     serde_json::to_string_pretty(&value).map_err(|error| format!("serialize bootstrap: {error}"))
 }
 
-fn write_static_site(out: &Path, bootstrap_json: &str) -> Result<(), String> {
+fn write_static_site(
+    out: &Path,
+    bootstrap_json: &str,
+    catalog_name: &str,
+    logo_path: Option<&Path>,
+    logo_file: Option<&str>,
+    favicon_path: Option<&Path>,
+    favicon_file: &str,
+) -> Result<(), String> {
     std::fs::create_dir_all(out)
         .map_err(|error| format!("could not create {}: {error}", out.display()))?;
 
+    let favicon_href = format!("./{favicon_file}");
+    let favicon_mime = favicon_path
+        .map(shell::mime_from_path)
+        .unwrap_or("image/svg+xml");
+
     for name in Assets::iter() {
         let path = name.as_ref();
+        if path.starts_with("src/") || path.ends_with(".jsx") {
+            continue;
+        }
         let file = Assets::get(path).ok_or_else(|| format!("missing embedded asset {path}"))?;
         let dest = out.join(path);
         if let Some(parent) = dest.parent() {
@@ -104,7 +141,19 @@ fn write_static_site(out: &Path, bootstrap_json: &str) -> Result<(), String> {
                 .map_err(|error| format!("{path} is not utf-8: {error}"))?;
             html = rewrite_asset_urls(&html);
             if path == "index.html" {
-                html = inject_bootstrap(&html, bootstrap_json);
+                html = shell::inject_workshop_shell(
+                    &html,
+                    bootstrap_json,
+                    catalog_name,
+                    &favicon_href,
+                    favicon_mime,
+                );
+                if !html.contains("render.js") {
+                    html = html.replace(
+                        "<script type=\"module\" src=\"./chrome/main.js\"",
+                        "<script src=\"./render.js\"></script>\n    <script type=\"module\" src=\"./chrome/main.js\"",
+                    );
+                }
             }
             html.into_bytes()
         } else {
@@ -113,6 +162,13 @@ fn write_static_site(out: &Path, bootstrap_json: &str) -> Result<(), String> {
 
         std::fs::write(&dest, bytes)
             .map_err(|error| format!("could not write {}: {error}", dest.display()))?;
+    }
+
+    if let (Some(source), Some(name)) = (logo_path, logo_file) {
+        copy_brand_file(source, &out.join(name))?;
+    }
+    if let Some(source) = favicon_path {
+        copy_brand_file(source, &out.join(favicon_file))?;
     }
 
     std::fs::write(out.join("bootstrap.json"), bootstrap_json).map_err(|error| {
@@ -137,30 +193,15 @@ pub(crate) fn rewrite_asset_urls(html: &str) -> String {
         .replace("src=\"/", "src=\"./")
 }
 
-fn inject_bootstrap(html: &str, bootstrap_json: &str) -> String {
-    let safe = bootstrap_json.replace('<', "\\u003c");
-    let block = format!(
-        "<script type=\"application/json\" id=\"schublade-bootstrap\">{safe}</script>\n    "
-    );
-    let mut html = if html.contains("id=\"schublade-bootstrap\"") {
-        html.to_string()
-    } else if let Some(index) = html.find("<script src=\"./workshop.js\"") {
-        let mut next = String::with_capacity(html.len() + block.len());
-        next.push_str(&html[..index]);
-        next.push_str(&block);
-        next.push_str(&html[index..]);
-        next
-    } else {
-        html.replace("</body>", &format!("{block}</body>"))
-    };
-
-    if !html.contains("render.js") {
-        html = html.replace(
-            "<script src=\"./workshop.js\"",
-            "<script src=\"./render.js\"></script>\n    <script src=\"./workshop.js\"",
-        );
-    }
-    html
+fn copy_brand_file(source: &Path, dest: &Path) -> Result<(), String> {
+    std::fs::copy(source, dest).map_err(|error| {
+        format!(
+            "could not copy {} to {}: {error}",
+            source.display(),
+            dest.display()
+        )
+    })?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -231,12 +272,24 @@ default = "Save"
 
         let index = std::fs::read_to_string(out.join("index.html")).unwrap();
         assert!(index.contains("id=\"schublade-bootstrap\""));
+        assert!(index.contains("<title>Static kit · Schublade</title>"), "{index}");
         assert!(index.contains("Static kit"));
         assert!(index.contains("./workshop.css"));
-        assert!(index.contains("./preview.html"));
         assert!(index.contains("./render.js"));
-        assert!(index.contains("./workshop.js"));
+        assert!(index.contains("./chrome/main.js"));
+        assert!(index.contains("type=\"importmap\""));
+        assert!(index.contains("./favicon.svg"));
         assert!(!index.contains("src=\"/preview\""));
+        assert!(!index.contains("id=\"catalog-name\">Schublade<"));
+        assert!(out.join("favicon.svg").exists());
+        assert!(out.join("preview.html").exists());
+        assert!(out.join("chrome/main.js").exists());
+        assert!(out.join("chrome/App.js").exists());
+        let chrome = std::fs::read_to_string(out.join("chrome/App.js")).unwrap();
+        assert!(
+            chrome.contains("./preview.html"),
+            "static chrome must point the iframe at ./preview.html"
+        );
 
         let preview = std::fs::read_to_string(out.join("preview.html")).unwrap();
         assert!(preview.contains("./preview.css"));
@@ -246,12 +299,70 @@ default = "Save"
             serde_json::from_str(&std::fs::read_to_string(out.join("bootstrap.json")).unwrap())
                 .unwrap();
         assert_eq!(bootstrap["catalog"]["name"], "Static kit");
+        assert_eq!(bootstrap["brand"]["name"], "Static kit");
+        assert_eq!(bootstrap["brand"]["favicon"], "./favicon.svg");
+        assert_eq!(bootstrap["static"], true);
         assert_eq!(bootstrap["catalog"]["stories"].as_array().unwrap().len(), 1);
 
         assert!(out.join("render.js").exists());
-        assert!(out.join("workshop.js").exists());
+        assert!(out.join("chrome/main.js").exists());
         assert!(out.join("vercel.json").exists());
         assert!(out.join("vendor/react.production.min.js").exists());
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn copies_configured_logo_and_favicon() {
+        let root = unique_root("brand");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(
+            root.join("catalog.toml"),
+            "name = \"Branded kit\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("logo.svg"),
+            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#111"/></svg>"##,
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("mark.ico"),
+            b"fake-ico",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("schublade.toml"),
+            r#"
+catalog = "./catalog.toml"
+logo = "./logo.svg"
+favicon = "./mark.ico"
+"#,
+        )
+        .unwrap();
+
+        let out = root.join("dist");
+        run(BuildArgs {
+            config: Some(root.join("schublade.toml")),
+            catalog: None,
+            stories: None,
+            name: None,
+            out: out.clone(),
+        })
+        .unwrap();
+
+        let index = std::fs::read_to_string(out.join("index.html")).unwrap();
+        assert!(index.contains("<title>Branded kit · Schublade</title>"), "{index}");
+        assert!(index.contains("./favicon.ico"), "{index}");
+        assert!(index.contains("image/x-icon"), "{index}");
+        assert_eq!(std::fs::read(out.join("logo.svg")).unwrap(), std::fs::read(root.join("logo.svg")).unwrap());
+        assert_eq!(std::fs::read(out.join("favicon.ico")).unwrap(), b"fake-ico");
+
+        let bootstrap: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(out.join("bootstrap.json")).unwrap())
+                .unwrap();
+        assert_eq!(bootstrap["brand"]["logo"], "./logo.svg");
+        assert_eq!(bootstrap["brand"]["favicon"], "./favicon.ico");
 
         let _ = std::fs::remove_dir_all(&root);
     }

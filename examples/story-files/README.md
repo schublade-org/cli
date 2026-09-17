@@ -5,7 +5,7 @@ Storybook-like CSF next to the real components. The root CLI walks `components/`
 - `button.jsx` is a React function component. `button.stories.jsx` imports it.
 - `badge.html` is an HTML template with `{{tokens}}`. `badge.stories.js` imports it.
 
-`catalog.toml` is present as a name-only fallback.
+`catalog.toml` is present as a name-only fallback. `logo.svg` and `favicon.svg` are the workshop mark — they are served live and copied by `schublade build`.
 
 ```bash
 npx schublade serve --config ./schublade.toml

@@ -6,6 +6,7 @@ mod config;
 mod csf;
 mod render;
 mod server;
+mod shell;
 mod stories;
 mod watch;
 

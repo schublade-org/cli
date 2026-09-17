@@ -21,10 +21,11 @@ use tokio::time::timeout;
 use tower_http::trace::TraceLayer;
 
 use crate::assets::Assets;
-use crate::catalog::{Bootstrap, Catalog};
+use crate::catalog::{A11yBootstrap, Bootstrap, BrandBootstrap, Catalog};
 use crate::cli::ServeArgs;
 use crate::config::AppConfig;
 use crate::render::render_story;
+use crate::shell;
 use crate::stories;
 use crate::watch::{self, WatchSpec};
 
@@ -43,6 +44,8 @@ struct Workshop {
     catalog_path: Option<PathBuf>,
     stories_root: Option<PathBuf>,
     story_files: Vec<PathBuf>,
+    logo_path: Option<PathBuf>,
+    favicon_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -76,6 +79,10 @@ pub async fn run(args: ServeArgs) -> Result<(), String> {
     let app = Router::new()
         .route("/", get(index))
         .route("/preview", get(preview_page))
+        .route("/brand/logo", get(brand_logo))
+        .route("/brand/favicon", get(brand_favicon))
+        .route("/favicon.ico", get(brand_favicon))
+        .route("/favicon.svg", get(brand_favicon))
         .route("/api/health", get(health))
         .route("/api/bootstrap", get(bootstrap))
         .route("/api/generation", get(generation))
@@ -100,6 +107,8 @@ fn load_workshop_from_args(args: &ServeArgs) -> Result<Workshop, String> {
         config.resolve_stories_path(args.stories.as_deref(), config_path.as_deref())?;
     let (catalog, catalog_path, story_files) =
         load_workshop(&config, catalog_source.as_deref(), stories_root.as_deref())?;
+    let logo_path = config.resolve_logo_path(config_path.as_deref())?;
+    let favicon_path = config.resolve_favicon_path(config_path.as_deref())?;
 
     Ok(Workshop {
         config,
@@ -108,6 +117,8 @@ fn load_workshop_from_args(args: &ServeArgs) -> Result<Workshop, String> {
         catalog_path,
         stories_root,
         story_files,
+        logo_path,
+        favicon_path,
     })
 }
 
@@ -352,8 +363,45 @@ async fn shutdown_signal() {
     let _ = tokio::signal::ctrl_c().await;
 }
 
-async fn index() -> Response {
-    embedded("index.html")
+async fn index(State(state): State<Arc<AppState>>) -> Response {
+    let workshop = state
+        .workshop
+        .read()
+        .unwrap_or_else(|error| error.into_inner());
+    let Some(file) = Assets::get("index.html") else {
+        return (StatusCode::NOT_FOUND, Html("Not found")).into_response();
+    };
+    let template = match String::from_utf8(file.data.into_owned()) {
+        Ok(html) => html,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "index.html is not utf-8").into_response(),
+    };
+    let bootstrap = live_bootstrap(&workshop);
+    let json = match serde_json::to_string(&bootstrap) {
+        Ok(json) => json,
+        Err(error) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("serialize bootstrap: {error}"),
+            )
+                .into_response();
+        }
+    };
+    let html = shell::inject_workshop_shell(
+        &template,
+        &json,
+        &workshop.catalog.name,
+        "/brand/favicon",
+        workshop
+            .favicon_path
+            .as_deref()
+            .map(shell::mime_from_path)
+            .unwrap_or("image/svg+xml"),
+    );
+    (
+        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        html,
+    )
+        .into_response()
 }
 
 async fn preview_page() -> Response {
@@ -401,14 +449,50 @@ async fn bootstrap(State(state): State<Arc<AppState>>) -> impl IntoResponse {
         .workshop
         .read()
         .unwrap_or_else(|error| error.into_inner());
-    Json(Bootstrap {
+    Json(live_bootstrap(&workshop))
+}
+
+fn live_bootstrap(workshop: &Workshop) -> Bootstrap {
+    Bootstrap {
         catalog: workshop.catalog.clone(),
         theme: workshop.config.theme.clone(),
-        a11y: crate::catalog::A11yBootstrap::from_config(
-            workshop.config.a11y.enabled,
-            &workshop.config.a11y.rules,
-        ),
-    })
+        a11y: A11yBootstrap::from_config(workshop.config.a11y.enabled, &workshop.config.a11y.rules),
+        brand: BrandBootstrap::live(&workshop.catalog.name, workshop.logo_path.is_some()),
+        static_site: false,
+    }
+}
+
+async fn brand_logo(State(state): State<Arc<AppState>>) -> Response {
+    let workshop = state
+        .workshop
+        .read()
+        .unwrap_or_else(|error| error.into_inner());
+    match &workshop.logo_path {
+        Some(path) => disk_file(path),
+        None => (StatusCode::NOT_FOUND, Html("Not found")).into_response(),
+    }
+}
+
+async fn brand_favicon(State(state): State<Arc<AppState>>) -> Response {
+    let workshop = state
+        .workshop
+        .read()
+        .unwrap_or_else(|error| error.into_inner());
+    match &workshop.favicon_path {
+        Some(path) => disk_file(path),
+        None => embedded("favicon.svg"),
+    }
+}
+
+fn disk_file(path: &Path) -> Response {
+    match std::fs::read(path) {
+        Ok(bytes) => (
+            [(header::CONTENT_TYPE, shell::mime_from_path(path).to_string())],
+            bytes,
+        )
+            .into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, Html("Not found")).into_response(),
+    }
 }
 
 async fn render(

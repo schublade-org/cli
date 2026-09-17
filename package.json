@@ -7,7 +7,16 @@
     "schublade": "npm/bin/schublade.js"
   },
   "scripts": {
-    "test:npm": "node npm/test/platform.test.js && node npm/test/resolve.test.js && node npm/test/cargo.test.js && node npm/test/pack-platform.test.js && node npm/test/bin-integration.test.js"
+    "build:workshop": "node workshop/build.mjs",
+    "test:workshop": "node workshop/groups.test.mjs",
+    "test:npm": "node npm/test/platform.test.js && node npm/test/resolve.test.js && node npm/test/cargo.test.js && node npm/test/pack-platform.test.js && node npm/test/bin-integration.test.js && npm run test:workshop"
+  },
+  "devDependencies": {
+    "@base-ui/react": "^1.0.1",
+    "@tabler/icons-react": "^3.35.0",
+    "esbuild": "^0.25.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "files": [
     "npm/bin",

@@ -138,9 +138,12 @@ impl CsfFile {
             } else {
                 title.clone()
             };
+            let (group, item) = crate::catalog::nav_parts(&story_title);
             out.push(Story {
                 id: story_id,
                 title: story_title,
+                group,
+                item,
                 section: section.clone(),
                 description: description.clone(),
                 generator,
