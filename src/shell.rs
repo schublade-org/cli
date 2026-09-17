@@ -70,6 +70,8 @@ pub fn inject_bootstrap(html: &str, bootstrap_json: &str) -> String {
     }
 
     for marker in [
+        "<script src=\"./workshop-boot.js\"",
+        "<script src=\"/workshop-boot.js\"",
         "<script src=\"./workshop.js\"",
         "<script src=\"/workshop.js\"",
     ] {

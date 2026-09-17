@@ -150,8 +150,8 @@ fn write_static_site(
                 );
                 if !html.contains("render.js") {
                     html = html.replace(
-                        "<script src=\"./workshop.js\"",
-                        "<script src=\"./render.js\"></script>\n    <script src=\"./workshop.js\"",
+                        "<script src=\"./workshop-boot.js\"",
+                        "<script src=\"./render.js\"></script>\n    <script src=\"./workshop-boot.js\"",
                     );
                 }
             }
@@ -276,15 +276,20 @@ default = "Save"
         assert!(index.contains("Static kit"));
         assert!(index.contains("./workshop.css"));
         assert!(index.contains("./render.js"));
-        assert!(index.contains("./workshop.js"));
+        assert!(index.contains("./workshop-boot.js"));
         assert!(index.contains("./favicon.svg"));
         assert!(!index.contains("src=\"/preview\""));
         assert!(!index.contains("id=\"catalog-name\">Schublade<"));
         assert!(out.join("favicon.svg").exists());
         assert!(out.join("preview.html").exists());
-        let workshop_js = std::fs::read_to_string(out.join("workshop.js")).unwrap();
+        assert!(out.join("workshop-boot.js").exists());
+        assert!(out.join("workshop.0.js").exists());
+        let chrome = ["workshop.0.js", "workshop.1.js", "workshop.2.js"]
+            .into_iter()
+            .map(|name| std::fs::read_to_string(out.join(name)).unwrap())
+            .collect::<String>();
         assert!(
-            workshop_js.contains("./preview.html"),
+            chrome.contains("./preview.html"),
             "static chrome must point the iframe at ./preview.html"
         );
 
@@ -302,7 +307,7 @@ default = "Save"
         assert_eq!(bootstrap["catalog"]["stories"].as_array().unwrap().len(), 1);
 
         assert!(out.join("render.js").exists());
-        assert!(out.join("workshop.js").exists());
+        assert!(out.join("workshop-boot.js").exists());
         assert!(out.join("vercel.json").exists());
         assert!(out.join("vendor/react.production.min.js").exists());
 
