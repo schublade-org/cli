@@ -1,0 +1,1 @@
+@/tmp/mcp-payloads/workshop.0.js.json
