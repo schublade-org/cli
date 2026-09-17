@@ -189,8 +189,8 @@ fn write_static_site(
 
 pub(crate) fn rewrite_asset_urls(html: &str) -> String {
     html.replace("src=\"/preview\"", "src=\"./preview.html\"")
-        .replace("href=\"/", "href=\"./" )
-        .replace("src=\"/", "src=\"./" )
+        .replace("href=\"/", "href=\"./")
+        .replace("src=\"/", "src=\"./")
 }
 
 fn copy_brand_file(source: &Path, dest: &Path) -> Result<(), String> {
@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn rewrite_makes_assets_relative() {
         let html = rewrite_asset_urls(
-            r#"<link href="/workshop.css"><iframe src="/preview"><script src="/vendor/react.production.min.js"></script>"#,
+            r#"<link href=\"/workshop.css\"><iframe src=\"/preview\"><script src=\"/vendor/react.production.min.js\"></script>"#,
         );
         assert!(html.contains("./workshop.css"));
         assert!(html.contains("./preview.html"));
