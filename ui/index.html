@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Schublade</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" id="schublade-favicon" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,62 +14,7 @@
     <link rel="stylesheet" href="/workshop.css" />
   </head>
   <body>
-    <div class="app">
-      <aside class="sidebar" id="sidebar">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span class="brand-name" id="catalog-name">Schublade</span>
-        </div>
-        <nav class="nav" id="nav" aria-label="Stories"></nav>
-      </aside>
-      <div class="stage">
-        <header class="stage-head">
-          <div class="stage-nav">
-            <button type="button" class="icon-btn" id="prev-story" aria-label="Previous story"></button>
-            <button type="button" class="icon-btn" id="next-story" aria-label="Next story"></button>
-          </div>
-          <h1 class="story-title" id="story-title">Loading</h1>
-          <div class="stage-actions">
-            <button type="button" class="text-btn mobile-only" id="open-nav">Stories</button>
-            <button type="button" class="text-btn mobile-only" id="open-controls">Controls</button>
-          </div>
-        </header>
-        <div class="canvas-wrap">
-          <div class="canvas-frame" id="canvas-frame">
-            <iframe id="preview" title="Isolated component preview" sandbox="allow-scripts" src="/preview"></iframe>
-            <p class="canvas-status" id="canvas-status" hidden>Loading story…</p>
-          </div>
-          <div class="canvas-tools">
-            <div class="viewport" role="group" aria-label="Canvas width">
-              <button type="button" class="icon-btn is-active" data-viewport="desktop" aria-label="Desktop width" aria-pressed="true"></button>
-              <button type="button" class="icon-btn" data-viewport="tablet" aria-label="Tablet width" aria-pressed="false"></button>
-              <button type="button" class="icon-btn" data-viewport="mobile" aria-label="Mobile width" aria-pressed="false"></button>
-            </div>
-            <button type="button" class="icon-btn" id="theme-toggle" aria-label="Toggle preview theme"></button>
-            <button type="button" class="a11y-chip" id="a11y-toggle" aria-expanded="false" aria-controls="a11y-panel">Accessibility · …</button>
-          </div>
-          <div class="a11y-panel" id="a11y-panel" hidden>
-            <p class="a11y-empty" id="a11y-empty">No issues with the current rules.</p>
-            <ul class="a11y-list" id="a11y-list"></ul>
-          </div>
-        </div>
-        <section class="code" aria-labelledby="code-title">
-          <header class="code-head">
-            <h2 id="code-title">Code Usage</h2>
-            <button type="button" class="icon-btn" id="copy-code" aria-label="Copy usage"></button>
-          </header>
-          <pre class="code-body" id="code-body"><code></code></pre>
-        </section>
-      </div>
-      <aside class="controls" id="controls">
-        <header class="controls-head">
-          <h2>Controls</h2>
-        </header>
-        <p class="controls-desc" id="story-desc"></p>
-        <div class="control-list" id="control-list"></div>
-      </aside>
-    </div>
-    <div class="scrim" id="scrim" hidden></div>
+    <div id="root"></div>
     <script src="/render.js"></script>
     <script src="/workshop.js"></script>
   </body>
