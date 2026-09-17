@@ -488,6 +488,7 @@ fn strip_comments(source: &str) -> String {
         }
         if ch == b'"' || ch == b'\'' {
             quote = Some(ch);
+            out.push(ch as char);
             i += 1;
             continue;
         }
