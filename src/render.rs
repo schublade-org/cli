@@ -15,6 +15,12 @@ pub struct ReactRender {
     pub props: serde_json::Map<String, Value>,
 }
 
+/// Code Usage snippet at the story's default control values.
+pub fn usage_code(story: &Story) -> String {
+    let values = with_attr_tokens(defaults_from_controls(&story.controls));
+    interpolate(&story.code, &values, false)
+}
+
 pub fn render_story(story: &Story, values: &Value) -> Result<RenderedStory, String> {
     let mut merged = defaults_from_controls(&story.controls);
     if let Some(object) = values.as_object() {
@@ -339,6 +345,32 @@ mod tests {
             interpolate(r#"<button>{{label}}</button>"#, &values, true),
             "<button>Save</button>"
         );
+    }
+
+    #[test]
+    fn usage_code_matches_default_code_usage() {
+        let story = Story {
+            id: "button".into(),
+            title: "Button".into(),
+            group: None,
+            item: "Button".into(),
+            section: "Components".into(),
+            description: String::new(),
+            generator: Generator::Html,
+            template: Some("<button>{{label}}</button>".into()),
+            code: "<Button>{{label}}</Button>".into(),
+            controls: vec![Control::Text {
+                id: "label".into(),
+                label: "Label".into(),
+                default: "Save".into(),
+            }],
+            component_source: None,
+            component_export: None,
+            component_name: None,
+        };
+        assert_eq!(usage_code(&story), "<Button>Save</Button>");
+        let rendered = render_story(&story, &Value::Object(Default::default())).unwrap();
+        assert_eq!(usage_code(&story), rendered.code);
     }
 
     #[test]
