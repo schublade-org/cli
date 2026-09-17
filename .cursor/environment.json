@@ -1,6 +1,6 @@
 {
   "name": "Schublade",
-  "install": "cargo build --locked",
+  "install": "cargo build --locked && npm install --omit=optional",
   "terminals": [
     {
       "name": "workshop-server",
