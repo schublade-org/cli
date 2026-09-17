@@ -1,9 +1,10 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 function Controls({ story, values, onChange, open }) {
   return /* @__PURE__ */ jsxs("aside", { className: `controls${open ? " is-open" : ""}`, id: "controls", children: [
-    /* @__PURE__ */ jsx("header", { className: "controls-head", children: /* @__PURE__ */ jsx("h2", { children: "Controls" }) }),
-    /* @__PURE__ */ jsx("p", { className: "controls-desc", children: story ? story.description || "No description for this story." : "Add a story to edit its props from this panel." }),
-    /* @__PURE__ */ jsx("hr", { className: "controls-rule" }),
+    /* @__PURE__ */ jsxs("div", { className: "controls-intro", children: [
+      /* @__PURE__ */ jsx("header", { className: "controls-head", children: /* @__PURE__ */ jsx("h2", { children: "Controls" }) }),
+      /* @__PURE__ */ jsx("p", { className: "controls-desc", children: story ? story.description || "No description for this story." : "Add a story to edit its props from this panel." })
+    ] }),
     /* @__PURE__ */ jsx("div", { className: "control-list", children: !story ? /* @__PURE__ */ jsx("p", { className: "controls-empty", children: "No controls until a story exists." }) : story.controls.length === 0 ? /* @__PURE__ */ jsx("p", { className: "controls-empty", children: "This story has no controls." }) : story.controls.map((control) => /* @__PURE__ */ jsxs("div", { className: "control-row", children: [
       /* @__PURE__ */ jsx("label", { htmlFor: `ctrl-${control.id}`, children: control.label }),
       /* @__PURE__ */ jsx(

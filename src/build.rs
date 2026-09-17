@@ -278,6 +278,7 @@ default = "Save"
         assert!(index.contains("./render.js"));
         assert!(index.contains("./chrome/main.js"));
         assert!(index.contains("type=\"importmap\""));
+        assert!(index.contains("@base-ui/react@1.8.0"));
         assert!(index.contains("./favicon.svg"));
         assert!(!index.contains("src=\"/preview\""));
         assert!(!index.contains("id=\"catalog-name\">Schublade<"));
