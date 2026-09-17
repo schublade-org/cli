@@ -189,8 +189,8 @@ fn write_static_site(
 
 pub(crate) fn rewrite_asset_urls(html: &str) -> String {
     html.replace("src=\"/preview\"", "src=\"./preview.html\"")
-        .replace("href=\"/", "href=\"./")
-        .replace("src=\"/", "src=\"./")
+        .replace("href=\"/", "href=\"./" )
+        .replace("src=\"/", "src=\"./" )
 }
 
 fn copy_brand_file(source: &Path, dest: &Path) -> Result<(), String> {
@@ -241,21 +241,21 @@ mod tests {
         let catalog = root.join("catalog.toml");
         std::fs::write(
             &catalog,
-            r#"name = "Static kit"
+            r#"name = \"Static kit\"
 
 [[stories]]
-id = "button"
-title = "Button"
-section = "Components"
-description = "A button"
-template = "<button>{{label}}</button>"
-code = "<Button>{{label}}</Button>"
+< = \"button\"
+title = \"Button\"
+section = \"Components\"
+description = \"A button\"
+template = \"<button>{{label}}</button>\"
+code = \"<Button>{{label}}</Button>\"
 
 [[stories.controls]]
-kind = "text"
-id = "label"
-label = "Label"
-default = "Save"
+kind = \"text\"
+id = \"label\"
+label = \"Label\"
+default = \"Save\"
 "#,
         )
         .unwrap();
@@ -320,7 +320,7 @@ default = "Save"
         .unwrap();
         std::fs::write(
             root.join("logo.svg"),
-            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#111"/></svg>"##,
+            r##"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\"><rect width=\"16\" height=\"16\" fill=\"#111\"/></svg>"##,
         )
         .unwrap();
         std::fs::write(
@@ -331,9 +331,9 @@ default = "Save"
         std::fs::write(
             root.join("schublade.toml"),
             r#"
-catalog = "./catalog.toml"
-logo = "./logo.svg"
-favicon = "./mark.ico"
+catalog = \"./catalog.toml\"
+logo = \"./logo.svg\"
+favicon = \"./mark.ico\"
 "#,
         )
         .unwrap();
