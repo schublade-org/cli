@@ -24,7 +24,7 @@ jobs:
             target: aarch64-unknown-linux-gnu
           - os: macos-latest
             target: aarch64-apple-darwin
-          - os: macos-13
+          - os: macos-15-intel
             target: x86_64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -73,19 +73,28 @@ jobs:
     name: GitHub Release + npm
     needs: build
     runs-on: ubuntu-latest
+    environment: npm
     permissions:
       contents: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+
+      - name: Use npm with Trusted Publishing support
+        run: |
+          npm install --global 'npm@^11.5.1'
+          node --version
+          npm --version
 
       - name: Create GitHub Release
         env:
@@ -111,16 +120,9 @@ jobs:
             --notes "npm installs the matching @schublade/cli-<os>-<arch> optional dependency (the binary ships inside that package). Tarballs here are a convenience for non-npm installs." \
             --latest
 
-      - name: Publish npm packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish npm packages with OIDC
         run: |
           set -euo pipefail
-          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-            echo "::notice::NPM_TOKEN is not set. GitHub Release assets are up; publish later with platform packages first, then the root schublade package."
-            echo "Add an npm automation token as repository secret NPM_TOKEN. The token must publish schublade and the @schublade org."
-            exit 0
-          fi
           shopt -s nullglob
           packages=(artifacts/*/npm-pkg)
           if [ "${#packages[@]}" -eq 0 ]; then

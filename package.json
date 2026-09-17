@@ -37,11 +37,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/schublade-org/schublade.git"
+    "url": "git+https://github.com/schublade-org/cli.git"
   },
-  "homepage": "https://github.com/schublade-org/schublade#readme",
+  "homepage": "https://github.com/schublade-org/cli#readme",
   "bugs": {
-    "url": "https://github.com/schublade-org/schublade/issues"
+    "url": "https://github.com/schublade-org/cli/issues"
   },
   "engines": {
     "node": ">=18"

@@ -11,7 +11,7 @@ npx schublade build --config ./schublade.toml --out ./dist
 ./run.sh
 ```
 
-Inside **schublade-org/schublade**, `./run.sh` / `./build.sh` fall back to `cargo run --manifest-path ../../Cargo.toml` so local CLI changes apply. You can still call the npm CLI from the repo root after `npm install`:
+Inside **schublade-org/cli**, `./run.sh` / `./build.sh` fall back to `cargo run --manifest-path ../../Cargo.toml` so local CLI changes apply. You can still call the npm CLI from the repo root after `npm install`:
 
 ```bash
 npx schublade serve --config examples/overflow/schublade.toml

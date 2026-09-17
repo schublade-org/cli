@@ -165,7 +165,7 @@ The root catalog stays the default demo (`npx schublade serve` / `cargo run -- s
 
 ## Example repo sync
 
-`examples/` in **schublade-org/schublade** is the source of truth. On push to `main` (and via *Actions → Sync example repos*), [`.github/workflows/sync-examples.yml`](.github/workflows/sync-examples.yml) mirrors each folder:
+`examples/` in **schublade-org/cli** is the source of truth. On push to `main` (and via *Actions → Sync example repos*), [`.github/workflows/sync-examples.yml`](.github/workflows/sync-examples.yml) mirrors each folder:
 
 | Folder | Mirror |
 | --- | --- |
@@ -212,9 +212,21 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) builds each target, publishes `@schublade/cli-<os>-<arch>` **first** (the Rust binary lives inside that package), then publishes the root `schublade` package. Set repository secret **`NPM_TOKEN`** (npm automation token) with publish rights for `schublade` and the `@schublade` org. Create that org on npm before the first tag if it does not exist.
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds each target, publishes `@schublade/cli-<os>-<arch>` **first** (the Rust binary lives inside that package), then publishes the root `schublade` package. Publishing uses npm Trusted Publishing: GitHub Actions exchanges its OIDC identity for short-lived npm credentials, so the repository does not need an `NPM_TOKEN`. Public packages receive npm provenance automatically.
 
-If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives are a convenience for non-npm installs — `npx schublade` does not download them. To publish later, publish every platform package, then `npm publish --access public` from the repo root.
+Before creating a release tag, add the same GitHub Actions Trusted Publisher to the npm settings of `schublade` and every `@schublade/cli-*` platform package:
+
+| npm Trusted Publisher field | Value |
+| --- | --- |
+| Organization or user | `schublade-org` |
+| Repository | `cli` |
+| Workflow filename | `release.yml` |
+| Environment name | `npm` |
+| Allowed action | `npm publish` |
+
+The platform packages are `@schublade/cli-darwin-arm64`, `@schublade/cli-darwin-x64`, `@schublade/cli-linux-arm64`, `@schublade/cli-linux-x64`, `@schublade/cli-win32-arm64`, and `@schublade/cli-win32-x64`. Trusted Publisher settings are package-specific, so all seven packages must be configured. The workflow runs on a GitHub-hosted runner with `id-token: write`, Node 24, and npm 11.5.1 or newer.
+
+After one successful OIDC release, remove any old `NPM_TOKEN` repository secret, revoke the corresponding npm automation token, and set each package's npm publishing access to **Require two-factor authentication and disallow tokens**. GitHub Release archives remain a convenience for non-npm installs; `npx schublade` installs the platform packages from npm.
 
 ## What you get
 

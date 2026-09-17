@@ -21,6 +21,10 @@ assert.deepStrictEqual(linuxPkg.os, ["linux"]);
 assert.deepStrictEqual(linuxPkg.cpu, ["x64"]);
 assert.deepStrictEqual(linuxPkg.libc, ["glibc"]);
 assert.deepStrictEqual(linuxPkg.files, ["bin"]);
+assert.strictEqual(
+  linuxPkg.repository.url,
+  "git+https://github.com/schublade-org/cli.git",
+);
 
 const darwinPkg = renderPlatformPackageJson(darwin, "0.1.0");
 assert.strictEqual(darwinPkg.name, "@schublade/cli-darwin-arm64");

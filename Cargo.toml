@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "A Storybook-like component workshop served from a Rust CLI"
 license = "MIT"
-repository = "https://github.com/schublade-org/schublade"
+repository = "https://github.com/schublade-org/cli"
 
 [dependencies]
 axum = "0.8"

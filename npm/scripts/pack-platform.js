@@ -54,9 +54,9 @@ function renderPlatformPackageJson(platform, version) {
     files: ["bin"],
     repository: {
       type: "git",
-      url: "git+https://github.com/schublade-org/schublade.git",
+      url: "git+https://github.com/schublade-org/cli.git",
     },
-    homepage: "https://github.com/schublade-org/schublade#readme",
+    homepage: "https://github.com/schublade-org/cli#readme",
     publishConfig: { access: "public" },
   };
   if (platform.libc) {
