@@ -4,7 +4,7 @@ A Storybook-like component workshop that runs from a **Rust CLI**. Consumers sta
 
 This is a POC/MVP. Feature parity with Storybook is not a goal. There is no plugin system.
 
-The bundled demo catalog is **Aarau Designsystem**: left story nav, an isolated center canvas, right-hand controls, and Code Usage under the preview.
+The bundled demo catalog is **Aarau Designsystem**: left story nav with grouped sub-drawers, an isolated center canvas, right-hand controls, and a Code Usage / a11y inspector under the preview.
 
 ## Install
 
@@ -209,13 +209,14 @@ If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives ar
 
 ## What you get
 
-- **CLI + server** — `clap` + `axum`, published as the `schublade` npm package. The workshop UI is embedded in the binary. `npx schublade serve` hot-reloads catalog and stories; `npx schublade build` writes the same workshop as static HTML.
+- **CLI + server** — `clap` + `axum`, published as the `schublade` npm package. The workshop chrome is a React app (Base UI + Tabler icons) embedded in the binary. `npx schublade serve` hot-reloads catalog and stories; `npx schublade build` writes the same workshop as static HTML, including the configured favicon and logo.
+- **Brand** — `logo` and `favicon` in `schublade.toml`. The catalog name and mark are written into `index.html` before first paint so the wordmark does not flash “Schublade”.
 - **Story discovery** — `*.stories.jsx` / `*.stories.js` next to components (TOML still works), plus `catalog.toml` as fallback.
 - **React preview** — `/api/render` returns the imported component source and current props. The iframe mounts React from vendored UMD plus a small local JSX transform. No npm toolchain in the consumer repo.
 - **Isolated iframe preview** — the canvas is a `sandbox="allow-scripts"` iframe. The shell talks to it with `postMessage` only.
 - **Native light/dark** — configurable trigger in `schublade.toml`: `data-attribute`, `class-name` / `className`, or `local-storage` / `localStorage`.
 - **Native a11y** — a small DOM checker in the preview iframe. Enable, disable, or drop rules in `schublade.toml`.
-- **Demo stories** — Accordion, Avatar group, Badge, Button, Chip.
+- **Demo stories** — Accordion, Avatar group, Badge, Button (Default / Ghost / Disabled), Chip.
 
 ## Configure
 
@@ -224,6 +225,8 @@ If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives ar
 ```toml
 catalog = "./catalog.toml"
 stories = "./components"   # optional; walk for *.stories.js(x) / *.stories.toml
+logo = "./logo.svg"        # optional workshop wordmark
+favicon = "./favicon.svg"  # optional; copied into `schublade build` output
 
 [theme]
 trigger = "data-attribute" # or "class-name", "local-storage"
@@ -244,10 +247,10 @@ An empty catalog (name only, no `[[stories]]` and no story files) is valid — t
 
 | Region | Role |
 | --- | --- |
-| Left | Catalog + story list |
-| Center | Sandboxed canvas, viewport switcher, theme, a11y status |
-| Right | Controls for the selected story |
-| Bottom | Code Usage for the current control values |
+| Left | Catalog mark + grouped story drawers (`Button / Ghost` → Button → Ghost) |
+| Center | Sandboxed canvas |
+| Right | Controls for the selected story, with a divider under the description |
+| Bottom | Inspector block: Code Usage and a11y tabs; breakpoints and light/dark as segmented controls |
 
 ## Develop
 
@@ -255,6 +258,8 @@ Rust 1.85 or newer (`rust-toolchain.toml` pins 1.85.0). Node 18+ is only require
 
 ```bash
 cargo test
+npm install
+npm run build:workshop   # rebuild ui/workshop.js after chrome edits
 npm run test:npm
 cargo run -- serve
 cargo run -- serve --config examples/story-files/schublade.toml

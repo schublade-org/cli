@@ -117,7 +117,7 @@ default = "In review"
 
 [[stories]]
 id = "button"
-title = "Button"
+title = "Button / Default"
 section = "Components"
 description = "The primary action control. Keep the label short and specific."
 generator = "html"
@@ -173,6 +173,124 @@ kind = "boolean"
 id = "disabled"
 label = "Disabled"
 default = false
+
+[[stories]]
+id = "button-ghost"
+title = "Button / Ghost"
+section = "Components"
+description = "A quiet action that sits next to a primary button."
+generator = "html"
+code = """<Button variant="{{variant}}" size="{{size}}" disabled={{{disabled}}}>{{label}}</Button>"""
+template = """
+<button class="btn" data-variant="{{variant}}" data-size="{{size}}" type="button"{{disabledAttr}}>{{label}}</button>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Cancel"
+
+[[stories.controls]]
+kind = "select"
+id = "variant"
+label = "Variant"
+default = "ghost"
+
+[[stories.controls.options]]
+value = "primary"
+label = "Primary"
+
+[[stories.controls.options]]
+value = "secondary"
+label = "Secondary"
+
+[[stories.controls.options]]
+value = "ghost"
+label = "Ghost"
+
+[[stories.controls]]
+kind = "select"
+id = "size"
+label = "Size"
+default = "md"
+
+[[stories.controls.options]]
+value = "sm"
+label = "Small"
+
+[[stories.controls.options]]
+value = "md"
+label = "Medium"
+
+[[stories.controls.options]]
+value = "lg"
+label = "Large"
+
+[[stories.controls]]
+kind = "boolean"
+id = "disabled"
+label = "Disabled"
+default = false
+
+[[stories]]
+id = "button-disabled"
+title = "Button / Disabled"
+section = "Components"
+description = "A primary action that cannot be activated."
+generator = "html"
+code = """<Button variant="{{variant}}" size="{{size}}" disabled={{{disabled}}}>{{label}}</Button>"""
+template = """
+<button class="btn" data-variant="{{variant}}" data-size="{{size}}" type="button"{{disabledAttr}}>{{label}}</button>
+"""
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Save changes"
+
+[[stories.controls]]
+kind = "select"
+id = "variant"
+label = "Variant"
+default = "primary"
+
+[[stories.controls.options]]
+value = "primary"
+label = "Primary"
+
+[[stories.controls.options]]
+value = "secondary"
+label = "Secondary"
+
+[[stories.controls.options]]
+value = "ghost"
+label = "Ghost"
+
+[[stories.controls]]
+kind = "select"
+id = "size"
+label = "Size"
+default = "md"
+
+[[stories.controls.options]]
+value = "sm"
+label = "Small"
+
+[[stories.controls.options]]
+value = "md"
+label = "Medium"
+
+[[stories.controls.options]]
+value = "lg"
+label = "Large"
+
+[[stories.controls]]
+kind = "boolean"
+id = "disabled"
+label = "Disabled"
+default = true
 
 [[stories]]
 id = "chip"

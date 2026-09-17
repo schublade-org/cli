@@ -2,6 +2,8 @@
 name = "Story files"
 catalog = "./catalog.toml"
 stories = "./components"
+logo = "./logo.svg"
+favicon = "./favicon.svg"
 
 [server]
 host = "0.0.0.0"
