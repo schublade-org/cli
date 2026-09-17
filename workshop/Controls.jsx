@@ -9,7 +9,7 @@ export function Controls({ story, values, onChange, open }) {
           ? story.description || "No description for this story."
           : "Add a story to edit its props from this panel."}
       </p>
-      <hr className="controls-rule" />
+      <div className="controls-rule" role="separator" />
       <div className="control-list">
         {!story ? (
           <p className="controls-empty">No controls until a story exists.</p>

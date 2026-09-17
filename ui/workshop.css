@@ -491,9 +491,11 @@ select {
 }
 
 .controls-rule {
+  display: block;
+  height: 1px;
   border: 0;
-  border-top: 1px solid var(--line);
-  margin: 16px 0 20px;
+  background: var(--line);
+  margin: 16px -22px 20px;
 }
 
 .control-row {
