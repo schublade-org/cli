@@ -150,8 +150,8 @@ fn write_static_site(
                 );
                 if !html.contains("render.js") {
                     html = html.replace(
-                        "<script src=\"./workshop-boot.js\"",
-                        "<script src=\"./render.js\"></script>\n    <script src=\"./workshop-boot.js\"",
+                        "<script type=\"module\" src=\"./chrome/main.js\"",
+                        "<script src=\"./render.js\"></script>\n    <script type=\"module\" src=\"./chrome/main.js\"",
                     );
                 }
             }
@@ -189,8 +189,8 @@ fn write_static_site(
 
 pub(crate) fn rewrite_asset_urls(html: &str) -> String {
     html.replace("src=\"/preview\"", "src=\"./preview.html\"")
-        .replace("href=\"/", "href=\"./")
-        .replace("src=\"/", "src=\"./")
+        .replace("href=\"/\", "href=\"./\")
+        .replace("src=\"/\", "src=\"./\")
 }
 
 fn copy_brand_file(source: &Path, dest: &Path) -> Result<(), String> {
@@ -276,18 +276,16 @@ default = "Save"
         assert!(index.contains("Static kit"));
         assert!(index.contains("./workshop.css"));
         assert!(index.contains("./render.js"));
-        assert!(index.contains("./workshop-boot.js"));
+        assert!(index.contains("./chrome/main.js"));
+        assert!(index.contains("type=\"importmap\""));
         assert!(index.contains("./favicon.svg"));
         assert!(!index.contains("src=\"/preview\""));
         assert!(!index.contains("id=\"catalog-name\">Schublade<"));
         assert!(out.join("favicon.svg").exists());
         assert!(out.join("preview.html").exists());
-        assert!(out.join("workshop-boot.js").exists());
-        assert!(out.join("workshop.0.js").exists());
-        let chrome = ["workshop.0.js", "workshop.1.js", "workshop.2.js"]
-            .into_iter()
-            .map(|name| std::fs::read_to_string(out.join(name)).unwrap())
-            .collect::<String>();
+        assert!(out.join("chrome/main.js").exists());
+        assert!(out.join("chrome/App.js").exists());
+        let chrome = std::fs::read_to_string(out.join("chrome/App.js")).unwrap();
         assert!(
             chrome.contains("./preview.html"),
             "static chrome must point the iframe at ./preview.html"
@@ -307,7 +305,7 @@ default = "Save"
         assert_eq!(bootstrap["catalog"]["stories"].as_array().unwrap().len(), 1);
 
         assert!(out.join("render.js").exists());
-        assert!(out.join("workshop-boot.js").exists());
+        assert!(out.join("chrome/main.js").exists());
         assert!(out.join("vercel.json").exists());
         assert!(out.join("vendor/react.production.min.js").exists());
 
