@@ -7,6 +7,7 @@ mod config;
 mod csf;
 mod css_tokens;
 mod mdx;
+mod props;
 mod render;
 mod server;
 mod shell;

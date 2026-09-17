@@ -1,0 +1,25 @@
+id = "toml-generated-code"
+title = "Metadata/TOML without code"
+description = "This TOML story intentionally omits `code`; Schublade generates Code Usage from its title and controls."
+template = """
+<article style="width:min(360px,100%);padding:24px;border:1px solid #e4e4e7;border-radius:16px;background:#fff">
+  <strong>{{heading}}</strong>
+  <p style="margin:10px 0 0;color:#71717a">{{message}}</p>
+</article>
+"""
+
+[args]
+heading = "Generated usage"
+message = "No explicit code field is present."
+
+[argTypes.heading]
+control = "text"
+name = "Heading"
+description = "Heading rendered by the HTML template."
+type = "String"
+
+[argTypes.message]
+control = "text"
+name = "Message"
+description = "Supporting copy rendered by the HTML template."
+type = "String"

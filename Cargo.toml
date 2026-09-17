@@ -12,6 +12,13 @@ clap = { version = "4", features = ["derive"] }
 futures-util = "0.3.34"
 mime_guess = "2"
 notify = "8"
+oxc_allocator = "=0.74.0"
+oxc_ast = "=0.74.0"
+oxc_codegen = "=0.74.0"
+oxc_parser = "=0.74.0"
+oxc_semantic = "=0.74.0"
+oxc_span = "=0.74.0"
+oxc_transformer = "=0.74.0"
 rust-embed = "8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

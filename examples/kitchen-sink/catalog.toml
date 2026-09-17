@@ -1,0 +1,4 @@
+name = "Kitchen Sink"
+
+# The catalog is intentionally empty. Stories are discovered from colocated
+# CSF and TOML story files so each metadata path is visible in one workshop.

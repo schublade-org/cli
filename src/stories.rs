@@ -4,12 +4,16 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use crate::catalog::{Control, Generator, SelectOption, Story};
+use crate::catalog::{Control, Generator, PropMetadata, SelectOption, Story};
 
 const STORY_SUFFIXES: &[&str] = &[
+    ".stories.tsx",
+    ".stories.ts",
     ".stories.jsx",
     ".stories.js",
     ".stories.toml",
+    ".story.tsx",
+    ".story.ts",
     ".story.jsx",
     ".story.js",
     ".story.toml",
@@ -64,6 +68,10 @@ struct ArgTypeSpec {
     min: Option<i64>,
     #[serde(default)]
     max: Option<i64>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default, rename = "type")]
+    type_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -91,7 +99,7 @@ impl ArgOption {
     }
 }
 
-/// Walk `root` for `*.stories.js(x)` and `*.stories.toml` and turn them into catalog stories.
+/// Walk `root` for `*.stories.[jt]s(x)` and `*.stories.toml` and turn them into catalog stories.
 pub fn discover(root: &Path) -> Result<DiscoveredStories, String> {
     if !root.exists() {
         return Err(format!("stories directory not found: {}", root.display()));
@@ -160,7 +168,7 @@ pub fn load_story_file(path: &Path) -> Result<Vec<Story>, String> {
         .and_then(|ext| ext.to_str())
         .unwrap_or_default()
     {
-        "js" | "jsx" => crate::csf::load_csf_file(path),
+        "js" | "jsx" | "ts" | "tsx" => crate::csf::load_csf_file(path),
         _ => {
             let raw = std::fs::read_to_string(path)
                 .map_err(|error| format!("could not read {}: {error}", path.display()))?;
@@ -173,16 +181,13 @@ pub fn load_story_file(path: &Path) -> Result<Vec<Story>, String> {
 
 impl StoryFile {
     fn into_stories(self, path: &Path) -> Result<Vec<Story>, String> {
-        let file_id = self
-            .id
-            .clone()
-            .unwrap_or_else(|| id_from_filename(path));
-        let (default_section, default_title) = split_title(
-            self.title
-                .as_deref()
-                .unwrap_or(&humanize(&file_id)),
-        );
-        let title_has_path = self.title.as_deref().is_some_and(|value| value.contains('/'));
+        let file_id = self.id.clone().unwrap_or_else(|| id_from_filename(path));
+        let (default_section, default_title) =
+            split_title(self.title.as_deref().unwrap_or(&humanize(&file_id)));
+        let title_has_path = self
+            .title
+            .as_deref()
+            .is_some_and(|value| value.contains('/'));
         let section = self.section.unwrap_or(default_section);
         let title = if title_has_path {
             default_title
@@ -194,9 +199,8 @@ impl StoryFile {
         let base_args = toml_table_to_json(&self.args);
         let arg_types = parse_arg_types(&self.arg_types, path)?;
         let controls = build_controls(&arg_types, &base_args, path)?;
-        let code = self
-            .code
-            .unwrap_or_else(|| default_code(&title, &controls));
+        let props = build_props(&arg_types, &base_args);
+        let code = self.code.unwrap_or_else(|| default_code(&title, &controls));
 
         if self.stories.is_empty() {
             let (group, item) = crate::catalog::nav_parts(&title);
@@ -210,6 +214,7 @@ impl StoryFile {
                 generator: self.generator,
                 template,
                 code,
+                props,
                 controls,
                 component_source: None,
                 component_export: None,
@@ -246,6 +251,7 @@ impl StoryFile {
                 generator: self.generator,
                 template: template.clone(),
                 code: code.clone(),
+                props: props.clone(),
                 controls,
                 component_source: None,
                 component_export: None,
@@ -289,9 +295,10 @@ fn parse_arg_types(
 ) -> Result<Vec<(String, ArgTypeSpec)>, String> {
     let mut out = Vec::with_capacity(raw.len());
     for (id, value) in raw {
-        let spec: ArgTypeSpec = value.clone().try_into().map_err(|error| {
-            format!("{}: argTypes.{id}: {error}", path.display())
-        })?;
+        let spec: ArgTypeSpec = value
+            .clone()
+            .try_into()
+            .map_err(|error| format!("{}: argTypes.{id}: {error}", path.display()))?;
         out.push((id.clone(), spec));
     }
     Ok(out)
@@ -321,6 +328,44 @@ pub fn build_controls_from_json(
     Ok(controls)
 }
 
+pub fn build_props_from_json(
+    arg_types: &BTreeMap<String, Value>,
+    args: &Map<String, Value>,
+    path: &Path,
+) -> Result<Vec<PropMetadata>, String> {
+    let mut specs = Vec::with_capacity(arg_types.len());
+    for (id, value) in arg_types {
+        specs.push((id.clone(), json_arg_type(id, value, path)?));
+    }
+    Ok(build_props(&specs, args))
+}
+
+pub fn merge_prop_metadata(
+    mut primary: Vec<PropMetadata>,
+    fallback: Vec<PropMetadata>,
+) -> Vec<PropMetadata> {
+    for prop in &mut primary {
+        let Some(other) = fallback
+            .iter()
+            .find(|candidate| candidate.name == prop.name)
+        else {
+            continue;
+        };
+        if prop.description.is_empty() {
+            prop.description.clone_from(&other.description);
+        }
+        if prop.type_name == "Unknown" {
+            prop.type_name.clone_from(&other.type_name);
+        }
+    }
+    for prop in fallback {
+        if !primary.iter().any(|candidate| candidate.name == prop.name) {
+            primary.push(prop);
+        }
+    }
+    primary
+}
+
 pub fn control_from_json_spec(
     id: &str,
     value: &Value,
@@ -332,9 +377,9 @@ pub fn control_from_json_spec(
 }
 
 fn json_arg_type(id: &str, value: &Value, path: &Path) -> Result<ArgTypeSpec, String> {
-    let object = value.as_object().ok_or_else(|| {
-        format!("{}: argTypes.{id} must be an object", path.display())
-    })?;
+    let object = value
+        .as_object()
+        .ok_or_else(|| format!("{}: argTypes.{id} must be an object", path.display()))?;
     let control = match object.get("control") {
         Some(Value::String(kind)) => Some(kind.clone()),
         Some(Value::Object(inner)) => inner
@@ -357,6 +402,18 @@ fn json_arg_type(id: &str, value: &Value, path: &Path) -> Result<ArgTypeSpec, St
         .or_else(|| object.get("label"))
         .and_then(Value::as_str)
         .map(str::to_string);
+    let description = object
+        .get("description")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let type_name = match object.get("type") {
+        Some(Value::String(name)) => Some(name.clone()),
+        Some(Value::Object(inner)) => inner
+            .get("name")
+            .and_then(Value::as_str)
+            .map(str::to_string),
+        _ => None,
+    };
     let options = match object.get("options") {
         Some(Value::Array(items)) => items
             .iter()
@@ -376,6 +433,8 @@ fn json_arg_type(id: &str, value: &Value, path: &Path) -> Result<ArgTypeSpec, St
         options,
         min: object.get("min").and_then(Value::as_i64),
         max: object.get("max").and_then(Value::as_i64),
+        description,
+        type_name,
     })
 }
 
@@ -385,15 +444,9 @@ fn json_arg_option(id: &str, value: &Value, path: &Path) -> Result<ArgOption, St
         Value::Number(number) => Ok(ArgOption::Value(number.to_string())),
         Value::Bool(flag) => Ok(ArgOption::Value(flag.to_string())),
         Value::Object(object) => {
-            let option_value = object
-                .get("value")
-                .map(json_to_plain)
-                .ok_or_else(|| {
-                    format!(
-                        "{}: argTypes.{id} option is missing value",
-                        path.display()
-                    )
-                })?;
+            let option_value = object.get("value").map(json_to_plain).ok_or_else(|| {
+                format!("{}: argTypes.{id} option is missing value", path.display())
+            })?;
             let label = object
                 .get("label")
                 .and_then(Value::as_str)
@@ -418,6 +471,92 @@ fn json_to_plain(value: &Value) -> String {
         Value::Null => String::new(),
         other => other.to_string(),
     }
+}
+
+fn build_props(
+    arg_types: &[(String, ArgTypeSpec)],
+    args: &Map<String, Value>,
+) -> Vec<PropMetadata> {
+    let mut props = Vec::new();
+    let mut seen = BTreeSet::new();
+
+    for (id, spec) in arg_types {
+        seen.insert(id.clone());
+        props.push(prop_from_spec(id, spec, args.get(id)));
+    }
+    for (id, value) in args {
+        if !seen.contains(id) {
+            props.push(prop_from_value(id, value));
+        }
+    }
+    props
+}
+
+fn prop_from_spec(id: &str, spec: &ArgTypeSpec, default: Option<&Value>) -> PropMetadata {
+    let type_name = spec
+        .type_name
+        .as_deref()
+        .map(display_type)
+        .or_else(|| default.map(value_type).map(str::to_string))
+        .or_else(|| {
+            spec.control
+                .as_deref()
+                .map(control_type)
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "Unknown".to_string());
+    PropMetadata {
+        name: id.to_string(),
+        description: spec.description.clone().unwrap_or_default(),
+        type_name,
+        default: default.and_then(json_default_source),
+    }
+}
+
+fn prop_from_value(id: &str, value: &Value) -> PropMetadata {
+    PropMetadata {
+        name: id.to_string(),
+        description: String::new(),
+        type_name: value_type(value).to_string(),
+        default: json_default_source(value),
+    }
+}
+
+fn display_type(value: &str) -> String {
+    let trimmed = value.trim();
+    match trimmed.to_ascii_lowercase().as_str() {
+        "string" | "text" | "select" | "radio" => "String".into(),
+        "bool" | "boolean" | "check" | "checkbox" => "Boolean".into(),
+        "number" | "range" | "integer" => "Number".into(),
+        "array" => "Array".into(),
+        "object" | "hash" => "Object".into(),
+        "function" => "Function".into(),
+        _ => trimmed.to_string(),
+    }
+}
+
+fn control_type(value: &str) -> &'static str {
+    match value.to_ascii_lowercase().as_str() {
+        "text" | "string" | "select" | "radio" => "String",
+        "boolean" | "bool" | "check" | "checkbox" => "Boolean",
+        "number" | "range" => "Number",
+        _ => "Unknown",
+    }
+}
+
+fn value_type(value: &Value) -> &'static str {
+    match value {
+        Value::String(_) => "String",
+        Value::Bool(_) => "Boolean",
+        Value::Number(_) => "Number",
+        Value::Array(_) => "Array",
+        Value::Object(_) => "Object",
+        Value::Null => "Null",
+    }
+}
+
+fn json_default_source(value: &Value) -> Option<String> {
+    serde_json::to_string(value).ok()
 }
 
 fn build_controls(
@@ -453,12 +592,10 @@ fn control_from_spec(
     let kind = spec
         .control
         .as_deref()
+        .or(spec.type_name.as_deref())
         .or_else(|| default.as_ref().map(inferred_kind))
         .unwrap_or("text");
-    let label = spec
-        .name
-        .clone()
-        .unwrap_or_else(|| humanize(id));
+    let label = spec.name.clone().unwrap_or_else(|| humanize(id));
 
     match kind {
         "text" | "string" => Ok(Control::Text {
@@ -551,10 +688,7 @@ pub fn overlay_control_defaults(controls: &[Control], values: &Map<String, Value
             };
             match control {
                 Control::Select {
-                    id,
-                    label,
-                    options,
-                    ..
+                    id, label, options, ..
                 } => Control::Select {
                     id: id.clone(),
                     label: label.clone(),
@@ -705,7 +839,10 @@ pub fn slug(input: &str) -> String {
 
 fn humanize(input: &str) -> String {
     let mut out = String::new();
-    for (index, part) in input.split(|ch: char| !ch.is_ascii_alphanumeric()).enumerate() {
+    for (index, part) in input
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .enumerate()
+    {
         if part.is_empty() {
             continue;
         }
@@ -776,6 +913,8 @@ variant = "primary"
 [argTypes.variant]
 control = "select"
 name = "Variant"
+description = "Visual treatment of the button."
+type = "string"
 options = [
   { value = "primary", label = "Primary" },
   { value = "ghost", label = "Ghost" },
@@ -792,6 +931,14 @@ options = [
         assert_eq!(story.title, "Button");
         assert_eq!(story.section, "Components");
         assert_eq!(story.controls.len(), 2);
+        let variant = story
+            .props
+            .iter()
+            .find(|prop| prop.name == "variant")
+            .unwrap();
+        assert_eq!(variant.description, "Visual treatment of the button.");
+        assert_eq!(variant.type_name, "String");
+        assert_eq!(variant.default.as_deref(), Some("\"primary\""));
         assert!(story
             .template
             .as_deref()
@@ -807,9 +954,10 @@ options = [
 
     #[test]
     fn infers_controls_from_args() {
-        let root = write_tree(&[(
-            "chip.stories.toml",
-            r#"
+        let root = write_tree(&[
+            (
+                "chip.stories.toml",
+                r#"
 title = "Chip"
 component = "./chip.html"
 
@@ -818,10 +966,12 @@ label = "Design system"
 selected = true
 count = 3
 "#,
-        ), (
-            "chip.html",
-            r#"<span data-selected="{{selected}}">{{label}} {{count}}</span>"#,
-        )]);
+            ),
+            (
+                "chip.html",
+                r#"<span data-selected="{{selected}}">{{label}} {{count}}</span>"#,
+            ),
+        ]);
 
         let story = &discover(&root).unwrap().stories[0];
         assert_eq!(story.controls.len(), 3);
@@ -838,9 +988,10 @@ count = 3
 
     #[test]
     fn named_variants_share_component() {
-        let root = write_tree(&[(
-            "button.stories.toml",
-            r#"
+        let root = write_tree(&[
+            (
+                "button.stories.toml",
+                r#"
 title = "Button"
 component = "./button.html"
 
@@ -856,10 +1007,9 @@ name = "Disabled"
 [stories.args]
 disabled = true
 "#,
-        ), (
-            "button.html",
-            "<button{{disabledAttr}}>{{label}}</button>",
-        )]);
+            ),
+            ("button.html", "<button{{disabledAttr}}>{{label}}</button>"),
+        ]);
 
         let stories = discover(&root).unwrap().stories;
         assert_eq!(stories.len(), 2);
@@ -945,13 +1095,18 @@ control = "select"
 
     #[test]
     fn example_story_files_discover() {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/story-files/components");
+        let root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/story-files/components");
         let discovered = discover(&root).unwrap();
         assert!(
             discovered.files.len() >= 2,
             "expected button + badge story files"
         );
-        let ids: Vec<_> = discovered.stories.iter().map(|story| story.id.as_str()).collect();
+        let ids: Vec<_> = discovered
+            .stories
+            .iter()
+            .map(|story| story.id.as_str())
+            .collect();
         assert!(ids.contains(&"button"), "{ids:?}");
         assert!(ids.contains(&"button-ghost"), "{ids:?}");
         assert!(ids.contains(&"button-disabled"), "{ids:?}");
@@ -982,13 +1137,11 @@ control = "select"
             .find(|story| story.id == "badge")
             .unwrap();
         assert_eq!(badge.generator, Generator::Html);
-        assert!(
-            badge
-                .template
-                .as_deref()
-                .unwrap()
-                .contains(r#"data-tone="{{tone}}""#)
-        );
+        assert!(badge
+            .template
+            .as_deref()
+            .unwrap()
+            .contains(r#"data-tone="{{tone}}""#));
         assert!(badge.code.contains("<Badge"), "{}", badge.code);
     }
 
@@ -998,7 +1151,13 @@ control = "select"
             (
                 "button.jsx",
                 r#"
-export function Button({ label, variant, disabled }) {
+export function Button({
+  /** Visible text inside the button. */
+  label,
+  // Visual style of the button.
+  variant = 'primary',
+  disabled = false,
+}) {
   return (
     <button className="btn" data-variant={variant} disabled={disabled}>
       {label}
@@ -1076,6 +1235,28 @@ export default {
         assert!(react.source.contains("function Button"));
         assert_eq!(react.export_name, "Button");
         assert_eq!(react.props["label"], Value::String("Save changes".into()));
+        let label = button
+            .props
+            .iter()
+            .find(|prop| prop.name == "label")
+            .unwrap();
+        assert_eq!(label.description, "Visible text inside the button.");
+        assert_eq!(label.type_name, "String");
+        assert_eq!(label.default, None);
+        let variant = button
+            .props
+            .iter()
+            .find(|prop| prop.name == "variant")
+            .unwrap();
+        assert_eq!(variant.description, "Visual style of the button.");
+        assert_eq!(variant.default.as_deref(), Some("'primary'"));
+        let disabled = button
+            .props
+            .iter()
+            .find(|prop| prop.name == "disabled")
+            .unwrap();
+        assert_eq!(disabled.type_name, "Boolean");
+        assert_eq!(disabled.default.as_deref(), Some("false"));
 
         let badge = discovered
             .stories
@@ -1091,9 +1272,66 @@ export default {
     }
 
     #[test]
+    fn kitchen_sink_covers_typescript_and_metadata_paths() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/kitchen-sink");
+        let discovered = discover(&root).unwrap();
+        assert_eq!(discovered.stories.len(), 8);
+
+        let story = |id: &str| {
+            discovered
+                .stories
+                .iter()
+                .find(|story| story.id == id)
+                .unwrap_or_else(|| panic!("missing kitchen-sink story {id}"))
+        };
+
+        let plain = story("type-plain");
+        assert_eq!(plain.generator, Generator::React);
+        assert_eq!(plain.props.len(), 5);
+        assert!(plain.props.iter().all(|prop| prop.description.is_empty()));
+        let tone = plain.props.iter().find(|prop| prop.name == "tone").unwrap();
+        assert_eq!(tone.type_name, "\"neutral\" | \"accent\" | \"positive\"");
+        assert_eq!(tone.default.as_deref(), Some("\"neutral\""));
+        let source = plain.component_source.as_deref().unwrap();
+        assert!(!source.contains("type TypePlainProps"), "{source}");
+        assert!(!source.contains(": TypePlainProps"), "{source}");
+        assert!(source.contains("<article"), "{source}");
+
+        let commented = story("interface-commented");
+        assert_eq!(commented.props.len(), 5);
+        assert!(commented
+            .props
+            .iter()
+            .all(|prop| !prop.description.is_empty()));
+        assert!(commented
+            .props
+            .iter()
+            .any(|prop| prop.name == "declaredOnly" && prop.default.is_none()));
+
+        let generated = story("toml-generated-code");
+        assert!(
+            generated.code.starts_with("<TOMLWithoutCode "),
+            "{}",
+            generated.code
+        );
+        assert!(generated.code.contains("heading=\"{{heading}}\""));
+
+        let csf_only = story("csf-only");
+        assert!(csf_only
+            .props
+            .iter()
+            .all(|prop| !prop.description.is_empty()));
+        assert!(story("a11y-many-errors").template.is_some());
+        assert!(story("a11y-clean").template.is_some());
+    }
+
+    #[test]
     fn slug_and_title_helpers() {
         assert_eq!(slug("Avatar Group"), "avatar-group");
-        assert_eq!(split_title("Forms/Text field"), ("Forms".into(), "Text field".into()));
+        assert_eq!(
+            split_title("Forms/Text field"),
+            ("Forms".into(), "Text field".into())
+        );
         assert_eq!(humanize("show-count"), "Show Count");
         let code = default_code(
             "Button",

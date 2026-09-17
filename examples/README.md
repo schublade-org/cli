@@ -37,3 +37,4 @@ The default catalog at the repo root is unchanged. Use `npx schublade serve` or 
 | [many-controls](many-controls/) | A story with a full control panel | 47307 |
 | [story-files](story-files/) | CSF `*.stories.jsx` / `*.stories.js` next to HTML and React components | 47308 |
 | [tailwind-tokens](tailwind-tokens/) | Tailwind `@theme` CSS token families (colors, `--text-*`, spacing, radius, shadow, …) | 47309 |
+| [kitchen-sink](kitchen-sink/) | TypeScript prop metadata, CSF/TOML fallbacks, generated code, and passing/failing a11y fixtures | 47310 |

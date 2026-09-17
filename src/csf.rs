@@ -5,8 +5,8 @@ use serde_json::{Map, Value};
 
 use crate::catalog::{Generator, Story};
 use crate::stories::{
-    build_controls_from_json, default_code, id_from_filename, overlay_control_defaults, slug,
-    split_title,
+    build_controls_from_json, build_props_from_json, default_code, id_from_filename,
+    merge_prop_metadata, overlay_control_defaults, slug, split_title,
 };
 
 #[derive(Debug, Clone)]
@@ -101,10 +101,25 @@ impl CsfFile {
             _ => import.name.clone(),
         };
         let controls = build_controls_from_json(&self.arg_types, &self.args, path)?;
+        let fallback_props = build_props_from_json(&self.arg_types, &self.args, path)?;
+        let props = match kind {
+            ComponentKind::React => merge_prop_metadata(
+                crate::props::extract_component_props(&component_path, &source, &import.name)?,
+                fallback_props,
+            ),
+            ComponentKind::Html => fallback_props,
+        };
         let code = default_code(&component_name, &controls);
         let (generator, template, component_source) = match kind {
             ComponentKind::Html => (Generator::Html, Some(source), None),
-            ComponentKind::React => (Generator::React, None, Some(source)),
+            ComponentKind::React => (
+                Generator::React,
+                None,
+                Some(crate::props::transpile_component_source(
+                    &component_path,
+                    &source,
+                )?),
+            ),
         };
 
         let variants = if self.variants.is_empty() {
@@ -149,6 +164,7 @@ impl CsfFile {
                 generator,
                 template: template.clone(),
                 code: code.clone(),
+                props: props.clone(),
                 controls,
                 component_source: component_source.clone(),
                 component_export: Some(import.name.clone()),
@@ -231,9 +247,17 @@ fn parse_import_line(line: &str) -> Option<Import> {
     let spec = line[from + 6..].trim().trim_end_matches(';').trim();
     let path = spec.trim_matches(|ch| ch == '\'' || ch == '"');
     let head = line["import ".len()..from].trim();
-    let name = if let Some(inner) = head.strip_prefix('{').and_then(|value| value.strip_suffix('}'))
+    let name = if let Some(inner) = head
+        .strip_prefix('{')
+        .and_then(|value| value.strip_suffix('}'))
     {
-        inner.split(',').next()?.trim().split_whitespace().next()?.to_string()
+        inner
+            .split(',')
+            .next()?
+            .trim()
+            .split_whitespace()
+            .next()?
+            .to_string()
     } else {
         head.split_whitespace().next()?.to_string()
     };

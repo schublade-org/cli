@@ -70,15 +70,22 @@ bash examples/build-all.sh
 
 ## Story files
 
-The source of truth for a component’s props is a prescribed file next to the component — Storybook-like CSF, not comments or AST extraction.
+React prop documentation is extracted from the imported component’s JavaScript/JSX AST. Leading comments on destructured props become descriptions, literal parameter defaults provide defaults and types, and CSF `args` / `argTypes` fill metadata gaps while continuing to define the interactive story controls.
 
-Define the actual component in HTML or React. The story file imports that component and declares `args` / `argTypes` there. There is no second copy of the markup and no `code = "<Button…>"` usage template.
+Define the actual component in HTML or React. The story file imports that component and declares `args` / `argTypes` for the workshop state. There is no second copy of the markup and no `code = "<Button…>"` usage template.
 
 The CLI discovers `*.stories.js` / `*.stories.jsx` first. `*.stories.toml` remains a fallback.
 
 ```jsx
 // components/button.jsx
-export function Button({ label, variant, disabled }) {
+export function Button({
+  /** Visible text inside the button. */
+  label,
+  /** Visual treatment of the button. */
+  variant = 'primary',
+  /** Prevents interaction. */
+  disabled = false,
+}) {
   return (
     <button className="btn" data-variant={variant} disabled={disabled}>
       {label}
@@ -128,7 +135,7 @@ export default {
 };
 ```
 
-`args` are defaults. `argTypes` declare controls (`text`, `select`, `boolean`, `number`). If `argTypes` is omitted, the CLI infers a control from each arg value. Named `export const` objects are variants; they inherit meta args. Code Usage is generated from the imported component name plus the current args.
+`args` are story defaults. `argTypes` declare controls (`text`, `select`, `boolean`, `number`) and can provide fallback prop metadata with `description` and `type`. If `argTypes` is omitted, the CLI infers a control from each arg value. Named `export const` objects are variants; they inherit meta args. Code Usage is generated from the imported component name plus the current args.
 
 Point the root CLI at a folder:
 

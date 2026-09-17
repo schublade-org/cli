@@ -136,6 +136,7 @@ mod tests {
             generator: Generator::Html,
             template: Some("<button class=\"btn\">{{label}}</button>".into()),
             code: r#"<Button variant="{{variant}}" size="{{size}}" disabled={{{disabled}}}>{{label}}</Button>"#.into(),
+            props: Vec::new(),
             controls: vec![
                 Control::Text {
                     id: "label".into(),

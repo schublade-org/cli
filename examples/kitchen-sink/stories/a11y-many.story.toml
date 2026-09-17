@@ -1,0 +1,17 @@
+id = "a11y-many-errors"
+title = "Accessibility/Many errors"
+description = "An intentionally broken fixture with multiple failures across every configured accessibility rule."
+template = """
+<div style="display:grid;gap:16px;width:min(440px,100%)">
+  <div style="display:flex;gap:10px">
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' fill='%23d4d4d8'/%3E%3C/svg%3E" width="48" height="48">
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%23bfdbfe'/%3E%3C/svg%3E" width="48" height="48">
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M0 48 24 0l24 48z' fill='%23fecaca'/%3E%3C/svg%3E" width="48" height="48">
+  </div>
+  <div style="display:flex;gap:10px"><button type="button"></button><button type="button"></button><button type="button"></button></div>
+  <div style="display:flex;gap:10px"><a href="#"></a><a href="#"></a><a href="#"></a></div>
+  <input type="text">
+  <input type="email">
+  <textarea></textarea>
+</div>
+"""

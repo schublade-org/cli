@@ -76,6 +76,8 @@ pub struct Story {
     #[serde(default)]
     pub template: Option<String>,
     pub code: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub props: Vec<PropMetadata>,
     #[serde(default)]
     pub controls: Vec<Control>,
     /// React/JSX source of the imported component. Omitted from `/api/bootstrap`.
@@ -86,6 +88,39 @@ pub struct Story {
     pub component_export: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub component_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PropMetadata {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    #[serde(rename = "type")]
+    pub type_name: String,
+    pub default: Option<String>,
+}
+
+impl PropMetadata {
+    pub fn from_control(control: &Control) -> Self {
+        let type_name = match control {
+            Control::Select { .. } | Control::Text { .. } => "String",
+            Control::Number { .. } => "Number",
+            Control::Boolean { .. } => "Boolean",
+        };
+        let default = match control {
+            Control::Select { default, .. } | Control::Text { default, .. } => {
+                serde_json::to_string(default).ok()
+            }
+            Control::Number { default, .. } => Some(default.to_string()),
+            Control::Boolean { default, .. } => Some(default.to_string()),
+        };
+        Self {
+            name: control.id().to_string(),
+            description: String::new(),
+            type_name: type_name.to_string(),
+            default,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -322,6 +357,13 @@ fn is_safe_page_id(id: &str) -> bool {
 
 impl Story {
     pub fn attach_nav_parts(&mut self) {
+        if self.props.is_empty() {
+            self.props = self
+                .controls
+                .iter()
+                .map(PropMetadata::from_control)
+                .collect();
+        }
         let (group, item) = nav_parts(&self.title);
         if self.group.is_none() {
             self.group = group;
@@ -421,6 +463,7 @@ mod tests {
             generator: Generator::Html,
             template: Some("<button>old</button>".into()),
             code: "<Button />".into(),
+            props: Vec::new(),
             controls: Vec::new(),
             component_source: None,
             component_export: None,
@@ -436,6 +479,7 @@ mod tests {
             generator: Generator::Html,
             template: Some("<button>new</button>".into()),
             code: "<Button />".into(),
+            props: Vec::new(),
             controls: Vec::new(),
             component_source: None,
             component_export: None,
@@ -457,6 +501,12 @@ mod tests {
             generator: Generator::React,
             template: None,
             code: "<Button />".into(),
+            props: vec![PropMetadata {
+                name: "variant".into(),
+                description: "Visual treatment.".into(),
+                type_name: "String".into(),
+                default: Some("\"primary\"".into()),
+            }],
             controls: Vec::new(),
             component_source: Some("export function Button() {}".into()),
             component_export: Some("Button".into()),
@@ -468,6 +518,10 @@ mod tests {
             "component_source must stay off the wire: {value}"
         );
         assert_eq!(value["component_export"], "Button");
+        assert_eq!(value["props"][0]["name"], "variant");
+        assert_eq!(value["props"][0]["description"], "Visual treatment.");
+        assert_eq!(value["props"][0]["type"], "String");
+        assert_eq!(value["props"][0]["default"], "\"primary\"");
     }
 
     #[test]
@@ -520,6 +574,7 @@ template = "<button>ghost</button>"
             generator: Generator::Html,
             template: None,
             code: String::new(),
+            props: Vec::new(),
             controls: Vec::new(),
             component_source: None,
             component_export: None,

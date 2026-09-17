@@ -359,6 +359,7 @@ mod tests {
             generator: Generator::Html,
             template: Some("<button>{{label}}</button>".into()),
             code: "<Button>{{label}}</Button>".into(),
+            props: Vec::new(),
             controls: vec![Control::Text {
                 id: "label".into(),
                 label: "Label".into(),
