@@ -97,7 +97,7 @@ pub fn should_reload(path: &Path, stories_root: Option<&Path>) -> bool {
 
     matches!(
         path.extension().and_then(|ext| ext.to_str()),
-        Some("js" | "jsx" | "html" | "css" | "toml")
+        Some("js" | "jsx" | "html" | "css" | "toml" | "svg" | "png" | "ico" | "webp")
     )
 }
 
