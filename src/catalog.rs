@@ -90,6 +90,49 @@ impl Control {
             | Self::Text { id, .. } => id,
         }
     }
+
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::Select { .. } => "select",
+            Self::Number { .. } => "number",
+            Self::Boolean { .. } => "boolean",
+            Self::Text { .. } => "text",
+        }
+    }
+
+    pub fn label(&self) -> &str {
+        match self {
+            Self::Select { label, .. }
+            | Self::Number { label, .. }
+            | Self::Boolean { label, .. }
+            | Self::Text { label, .. } => label,
+        }
+    }
+
+    pub fn default_display(&self) -> String {
+        match self {
+            Self::Select { default, .. } | Self::Text { default, .. } => default.clone(),
+            Self::Number { default, .. } => default.to_string(),
+            Self::Boolean { default, .. } => default.to_string(),
+        }
+    }
+
+    pub fn extra_display(&self) -> String {
+        match self {
+            Self::Select { options, .. } => options
+                .iter()
+                .map(|option| option.value.as_str())
+                .collect::<Vec<_>>()
+                .join(", "),
+            Self::Number { min, max, .. } => match (min, max) {
+                (Some(min), Some(max)) => format!("{min}–{max}"),
+                (Some(min), None) => format!("≥{min}"),
+                (None, Some(max)) => format!("≤{max}"),
+                (None, None) => String::new(),
+            },
+            Self::Boolean { .. } | Self::Text { .. } => String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

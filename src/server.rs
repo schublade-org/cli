@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use axum::extract::State;
+use axum::extract::{Path as PathParam, State};
 use axum::http::{header, StatusCode, Uri};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{Html, IntoResponse, Response};
@@ -20,6 +20,7 @@ use tokio::sync::broadcast;
 use tokio::time::timeout;
 use tower_http::trace::TraceLayer;
 
+use crate::agents;
 use crate::assets::Assets;
 use crate::catalog::{A11yBootstrap, Bootstrap, BrandBootstrap, Catalog};
 use crate::cli::ServeArgs;
@@ -83,6 +84,8 @@ pub async fn run(args: ServeArgs) -> Result<(), String> {
         .route("/brand/favicon", get(brand_favicon))
         .route("/favicon.ico", get(brand_favicon))
         .route("/favicon.svg", get(brand_favicon))
+        .route("/AGENTS.md", get(agents_index))
+        .route("/{id}/AGENTS.md", get(agents_story))
         .route("/api/health", get(health))
         .route("/api/bootstrap", get(bootstrap))
         .route("/api/generation", get(generation))
@@ -452,6 +455,36 @@ async fn bootstrap(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     Json(live_bootstrap(&workshop))
 }
 
+async fn agents_index(State(state): State<Arc<AppState>>) -> Response {
+    let workshop = state
+        .workshop
+        .read()
+        .unwrap_or_else(|error| error.into_inner());
+    markdown_response(agents::index(&workshop.catalog))
+}
+
+async fn agents_story(State(state): State<Arc<AppState>>, PathParam(id): PathParam<String>) -> Response {
+    if !agents::is_safe_story_id(&id) {
+        return (StatusCode::NOT_FOUND, Html("Not found")).into_response();
+    }
+    let workshop = state
+        .workshop
+        .read()
+        .unwrap_or_else(|error| error.into_inner());
+    match workshop.catalog.story(&id) {
+        Some(story) => markdown_response(agents::story_doc(story)),
+        None => (StatusCode::NOT_FOUND, Html("Not found")).into_response(),
+    }
+}
+
+fn markdown_response(body: String) -> Response {
+    (
+        [(header::CONTENT_TYPE, "text/markdown; charset=utf-8")],
+        body,
+    )
+        .into_response()
+}
+
 fn live_bootstrap(workshop: &Workshop) -> Bootstrap {
     Bootstrap {
         catalog: workshop.catalog.clone(),
@@ -691,5 +724,46 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
         panic!("watcher did not reload after schublade.toml changed");
+    }
+
+    #[tokio::test]
+    async fn agents_md_handlers_use_catalog_renderer() {
+        let (_dir, args) = temp_workshop("agents");
+        let state = Arc::new(AppState {
+            workshop: RwLock::new(load_workshop_from_args(&args).unwrap()),
+            generation: AtomicU64::new(0),
+            reload: broadcast::channel(8).0,
+            args,
+        });
+
+        let index = agents_index(State(state.clone())).await;
+        assert_eq!(index.status(), StatusCode::OK);
+        assert_eq!(
+            index
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok()),
+            Some("text/markdown; charset=utf-8")
+        );
+        let index_body = axum::body::to_bytes(index.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let index_text = String::from_utf8(index_body.to_vec()).unwrap();
+        assert!(index_text.contains("# Reload"));
+        assert!(index_text.contains("/badge/AGENTS.md"));
+        assert!(!index_text.contains("#/badge"));
+
+        let story = agents_story(State(state.clone()), PathParam("badge".into())).await;
+        assert_eq!(story.status(), StatusCode::OK);
+        let story_body = axum::body::to_bytes(story.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let story_text = String::from_utf8(story_body.to_vec()).unwrap();
+        assert!(story_text.contains("# Badge"));
+        assert!(story_text.contains("<span class=\"badge\">Old</span>") == false);
+        assert!(story_text.contains("Old") || story_text.contains("Badge"));
+
+        let missing = agents_story(State(state), PathParam("missing".into())).await;
+        assert_eq!(missing.status(), StatusCode::NOT_FOUND);
     }
 }

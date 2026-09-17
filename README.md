@@ -38,6 +38,8 @@ npx schublade serve --config ./schublade.toml --stories ./components
 
 The workshop listens on `http://127.0.0.1:47291` by default (`0.0.0.0:47291` so it is reachable in this environment). `schublade` with no subcommand also starts the server.
 
+Agents can read the catalog as markdown from the same server: `GET /AGENTS.md` (index) and `GET /{id}/AGENTS.md` (for example `/button-ghost/AGENTS.md`). Those pages use the story catalog — the same usage snippet and controls as the workshop — not a second story format and not component source.
+
 `serve` watches the resolved `schublade.toml`, `catalog.toml`, and stories/component tree. Catalog and story discovery reload in place — the HTTP server stays up. The workshop UI picks up the new catalog over `/api/events` (or `/api/generation` if EventSource is missing) and re-renders the iframe. Changing bind host/port in the config does not rebind; restart for that.
 
 When hacking on the CLI itself:
@@ -57,7 +59,7 @@ npx schublade build --out dist
 npx schublade build --config examples/story-files/schublade.toml --out dist/story-files
 ```
 
-The folder contains `index.html` (catalog baked in), `preview.html`, CSS/JS (including React for JSX stories), `bootstrap.json`, and a small `vercel.json`. Hash routes (`#/button`) do not need SPA rewrites.
+The folder contains `index.html` (catalog baked in), `preview.html`, CSS/JS (including React for JSX stories), `bootstrap.json`, a small `vercel.json`, plus `AGENTS.md` and `{id}/AGENTS.md` — the same files the live server serves. Hash routes (`#/button`) do not need SPA rewrites.
 
 Deploy that folder to any static host — Vercel, Netlify, nginx, GitHub Pages, or `python -m http.server`. Create one Vercel project per example yourself and point the project at that example’s output folder. Schublade does not talk to Vercel.
 
@@ -216,6 +218,7 @@ If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives ar
 - **Isolated iframe preview** — the canvas is a `sandbox="allow-scripts"` iframe. The shell talks to it with `postMessage` only.
 - **Native light/dark** — configurable trigger in `schublade.toml`: `data-attribute`, `class-name` / `className`, or `local-storage` / `localStorage`.
 - **Native a11y** — a small DOM checker in the preview iframe. Enable, disable, or drop rules in `schublade.toml`.
+- **AGENTS.md** — one renderer writes `GET /AGENTS.md`, `GET /{id}/AGENTS.md`, and the same paths from `schublade build`. Content is catalog usage + controls, not source dumps or hash URLs.
 - **Demo stories** — Accordion, Avatar group, Badge, Button (Default / Ghost / Disabled), Chip.
 
 ## Configure

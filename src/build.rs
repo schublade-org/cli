@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::agents;
 use crate::assets::Assets;
 use crate::catalog::{A11yBootstrap, Bootstrap, BrandBootstrap};
 use crate::cli::BuildArgs;
@@ -51,6 +52,7 @@ pub fn run(args: BuildArgs) -> Result<(), String> {
         favicon_path.as_deref(),
         &favicon_file,
     )?;
+    write_agents_md(&args.out, &catalog)?;
 
     println!("Schublade {}", env!("CARGO_PKG_VERSION"));
     println!(
@@ -77,7 +79,7 @@ pub fn run(args: BuildArgs) -> Result<(), String> {
     if let Some(path) = config_path {
         println!("          config {}", path.display());
     }
-    println!("          index.html · preview.html · bootstrap.json · favicon");
+    println!("          index.html · preview.html · bootstrap.json · favicon · AGENTS.md");
     println!(
         "Deploy    any static host — point it at {}",
         args.out.display()
@@ -191,6 +193,20 @@ pub(crate) fn rewrite_asset_urls(html: &str) -> String {
     html.replace("src=\"/preview\"", "src=\"./preview.html\"")
         .replace("href=\"/", "href=\"./")
         .replace("src=\"/", "src=\"./")
+}
+
+fn write_agents_md(out: &Path, catalog: &crate::catalog::Catalog) -> Result<(), String> {
+    for (rel, body) in agents::files(catalog) {
+        let dest = out.join(&rel);
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| {
+                format!("could not create {}: {error}", parent.display())
+            })?;
+        }
+        std::fs::write(&dest, body)
+            .map_err(|error| format!("could not write {}: {error}", dest.display()))?;
+    }
+    Ok(())
 }
 
 fn copy_brand_file(source: &Path, dest: &Path) -> Result<(), String> {
@@ -310,6 +326,18 @@ default = "Save"
         assert!(out.join("vercel.json").exists());
         assert!(out.join("vendor/react.production.min.js").exists());
 
+        let agents_index = std::fs::read_to_string(out.join("AGENTS.md")).unwrap();
+        assert!(agents_index.contains("# Static kit"));
+        assert!(agents_index.contains("[Button](/button/AGENTS.md)"));
+        assert!(!agents_index.contains("#/button"));
+        let agents_story = std::fs::read_to_string(out.join("button/AGENTS.md")).unwrap();
+        assert!(agents_story.contains("# Button"));
+        assert!(agents_story.contains("<Button>Save</Button>"));
+        assert!(agents_story.contains("| label | Label | text | Save |"));
+        assert!(agents_story.contains("[Catalog index](/AGENTS.md)"));
+        assert!(!agents_story.contains("#/button"));
+        assert!(!agents_story.contains("<button>{{label}}</button>"));
+
         let _ = std::fs::remove_dir_all(&root);
     }
 
@@ -399,6 +427,15 @@ favicon = "./mark.ico"
             "{}",
             button["component_source"]
         );
+
+        let agents = std::fs::read_to_string(out.join("button/AGENTS.md")).unwrap();
+        assert!(agents.contains("# Button / Default") || agents.contains("# Button"));
+        assert!(agents.contains("<Button"));
+        assert!(!agents.contains("function Button"), "{agents}");
+        assert!(!agents.contains("#/button"));
+        let index = std::fs::read_to_string(out.join("AGENTS.md")).unwrap();
+        assert!(index.contains("/button/AGENTS.md"));
+        assert!(!index.contains("#/"));
 
         let _ = std::fs::remove_dir_all(out.parent().unwrap());
     }
