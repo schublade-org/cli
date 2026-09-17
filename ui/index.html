@@ -12,15 +12,25 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/workshop.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.3.1",
+          "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+          "react-dom": "https://esm.sh/react-dom@18.3.1",
+          "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+          "@base-ui/react/tabs": "https://esm.sh/@base-ui/react@1.0.1/tabs?external=react",
+          "@base-ui/react/toggle": "https://esm.sh/@base-ui/react@1.0.1/toggle?external=react",
+          "@base-ui/react/toggle-group": "https://esm.sh/@base-ui/react@1.0.1/toggle-group?external=react",
+          "@base-ui/react/tooltip": "https://esm.sh/@base-ui/react@1.0.1/tooltip?external=react",
+          "@base-ui/react/collapsible": "https://esm.sh/@base-ui/react@1.0.1/collapsible?external=react"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script src="/vendor/react.production.min.js"></script>
-    <script
-      src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"
-      crossorigin
-    ></script>
     <script src="/render.js"></script>
-    <script src="/workshop-boot.js"></script>
+    <script type="module" src="/chrome/main.js"></script>
   </body>
 </html>
