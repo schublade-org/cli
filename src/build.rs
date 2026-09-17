@@ -203,3 +203,199 @@ fn copy_brand_file(source: &Path, dest: &Path) -> Result<(), String> {
     })?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    use crate::cli::BuildArgs;
+
+    fn unique_root(stamp: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "schublade-build-{}-{}-{}",
+            std::process::id(),
+            stamp,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        ))
+    }
+
+    #[test]
+    fn rewrite_makes_assets_relative() {
+        let html = rewrite_asset_urls(
+            r#"<link href="/workshop.css"><iframe src="/preview"><script src="/vendor/react.production.min.js"></script>"#,
+        );
+        assert!(html.contains("./workshop.css"));
+        assert!(html.contains("./preview.html"));
+        assert!(html.contains("./vendor/react.production.min.js"));
+        assert!(!html.contains("src=\"/preview\""));
+    }
+
+    #[test]
+    fn writes_portable_static_site() {
+        let root = unique_root("catalog");
+        std::fs::create_dir_all(&root).unwrap();
+        let catalog = root.join("catalog.toml");
+        std::fs::write(
+            &catalog,
+            r#"name = "Static kit"
+
+[[stories]]
+id = "button"
+title = "Button"
+section = "Components"
+description = "A button"
+template = "<button>{{label}}</button>"
+code = "<Button>{{label}}</Button>"
+
+[[stories.controls]]
+kind = "text"
+id = "label"
+label = "Label"
+default = "Save"
+"#,
+        )
+        .unwrap();
+
+        let out = root.join("dist");
+        run(BuildArgs {
+            config: None,
+            catalog: Some(catalog),
+            stories: None,
+            name: Some("Static kit".into()),
+            out: out.clone(),
+        })
+        .unwrap();
+
+        let index = std::fs::read_to_string(out.join("index.html")).unwrap();
+        assert!(index.contains("id=\"schublade-bootstrap\""));
+        assert!(index.contains("<title>Static kit · Schublade</title>"), "{index}");
+        assert!(index.contains("Static kit"));
+        assert!(index.contains("./workshop.css"));
+        assert!(index.contains("./render.js"));
+        assert!(index.contains("./workshop.js"));
+        assert!(index.contains("./favicon.svg"));
+        assert!(!index.contains("src=\"/preview\""));
+        assert!(!index.contains("id=\"catalog-name\">Schublade<"));
+        assert!(out.join("favicon.svg").exists());
+        assert!(out.join("preview.html").exists());
+        let workshop_js = std::fs::read_to_string(out.join("workshop.js")).unwrap();
+        assert!(
+            workshop_js.contains("./preview.html"),
+            "static chrome must point the iframe at ./preview.html"
+        );
+
+        let preview = std::fs::read_to_string(out.join("preview.html")).unwrap();
+        assert!(preview.contains("./preview.css"));
+        assert!(preview.contains("./jsx.js"));
+
+        let bootstrap: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(out.join("bootstrap.json")).unwrap())
+                .unwrap();
+        assert_eq!(bootstrap["catalog"]["name"], "Static kit");
+        assert_eq!(bootstrap["brand"]["name"], "Static kit");
+        assert_eq!(bootstrap["brand"]["favicon"], "./favicon.svg");
+        assert_eq!(bootstrap["static"], true);
+        assert_eq!(bootstrap["catalog"]["stories"].as_array().unwrap().len(), 1);
+
+        assert!(out.join("render.js").exists());
+        assert!(out.join("workshop.js").exists());
+        assert!(out.join("vercel.json").exists());
+        assert!(out.join("vendor/react.production.min.js").exists());
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn copies_configured_logo_and_favicon() {
+        let root = unique_root("brand");
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(
+            root.join("catalog.toml"),
+            "name = \"Branded kit\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("logo.svg"),
+            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#111"/></svg>"##,
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("mark.ico"),
+            b"fake-ico",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("schublade.toml"),
+            r#"
+catalog = "./catalog.toml"
+logo = "./logo.svg"
+favicon = "./mark.ico"
+"#,
+        )
+        .unwrap();
+
+        let out = root.join("dist");
+        run(BuildArgs {
+            config: Some(root.join("schublade.toml")),
+            catalog: None,
+            stories: None,
+            name: None,
+            out: out.clone(),
+        })
+        .unwrap();
+
+        let index = std::fs::read_to_string(out.join("index.html")).unwrap();
+        assert!(index.contains("<title>Branded kit · Schublade</title>"), "{index}");
+        assert!(index.contains("./favicon.ico"), "{index}");
+        assert!(index.contains("image/x-icon"), "{index}");
+        assert_eq!(std::fs::read(out.join("logo.svg")).unwrap(), std::fs::read(root.join("logo.svg")).unwrap());
+        assert_eq!(std::fs::read(out.join("favicon.ico")).unwrap(), b"fake-ico");
+
+        let bootstrap: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(out.join("bootstrap.json")).unwrap())
+                .unwrap();
+        assert_eq!(bootstrap["brand"]["logo"], "./logo.svg");
+        assert_eq!(bootstrap["brand"]["favicon"], "./favicon.ico");
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn story_files_example_keeps_react_source() {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let out = unique_root("story-files").join("dist");
+        run(BuildArgs {
+            config: Some(manifest.join("examples/story-files/schublade.toml")),
+            catalog: None,
+            stories: None,
+            name: None,
+            out: out.clone(),
+        })
+        .unwrap();
+
+        let bootstrap: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(out.join("bootstrap.json")).unwrap())
+                .unwrap();
+        let stories = bootstrap["catalog"]["stories"].as_array().unwrap();
+        assert!(stories.len() >= 4, "{stories:?}");
+        let button = stories
+            .iter()
+            .find(|story| story["id"] == "button")
+            .expect("button story");
+        assert_eq!(button["generator"], "react");
+        assert!(
+            button["component_source"]
+                .as_str()
+                .unwrap()
+                .contains("function Button"),
+            "{}",
+            button["component_source"]
+        );
+
+        let _ = std::fs::remove_dir_all(out.parent().unwrap());
+    }
+}
