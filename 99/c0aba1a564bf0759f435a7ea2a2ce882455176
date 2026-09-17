@@ -1,0 +1,102 @@
+examples/kitchen-sink/README.md
+  s_5224d267af9c0b::t_8c0c8cccadf18c 1-23
+examples/kitchen-sink/schublade.toml
+  s_5224d267af9c0b::t_ac52061f7dd14b 1-23
+examples/kitchen-sink/components/interface-plain.stories.jsx
+  s_5224d267af9c0b::t_ce0943315c463f 1-3,5-21
+  s_5224d267af9c0b::t_54c1ff5896773d 4
+examples/kitchen-sink/stories/a11y-many.story.toml
+  s_5224d267af9c0b::t_925aea1be2eeef 1-8,10,16-17
+  s_5224d267af9c0b::t_2359e2edacce18 9,11-15
+examples/README.md
+  s_5224d267af9c0b::t_a25387a9621196 39
+src/catalog.rs
+  s_5224d267af9c0b::t_58d9fc2702199a 384,400
+  s_5224d267af9c0b::t_ba9da886e1b809 422-427,439-442
+  s_5224d267af9c0b::t_1ba459b9d07b8c 33-34,47-79,278-284
+examples/story-files/components/button.jsx
+  s_5224d267af9c0b::t_4e37d79843dbfe 1-10
+src/render.rs
+  s_5224d267af9c0b::t_140944f2e9138e 362
+examples/kitchen-sink/components/csf-only.stories.jsx
+  s_5224d267af9c0b::t_9e8231830d14ac 1-22
+examples/kitchen-sink/components/csf-only.jsx
+  s_5224d267af9c0b::t_e260e416113934 1-15
+src/props.rs
+  s_5224d267af9c0b::t_699feb7f87b1b5 146
+  s_5224d267af9c0b::t_0743f29c255085 8,10,16,19-23,26-41,46-49,56-71,90-91,93-99
+  s_5224d267af9c0b::t_44ea8f27ac1349 476-531,539
+  s_5224d267af9c0b::t_535079ec31e90c 6,81-89,100-107,121-122,128-145,147-243,246-271
+  s_5224d267af9c0b::t_046d1d0ae90109 118,331,346
+  s_5224d267af9c0b::t_469938472fe79f 114-117,119-120,366-374,389-391
+  s_5224d267af9c0b::t_d8a23fa0ba7538 92
+  s_5224d267af9c0b::t_099543080aba8e 1-5,7,9,11,13-15,17-18,24-25,50-55,72-80,108-113,123-127,244-245,272-330,332-345,347-365,383-388,392-475,540
+  s_5224d267af9c0b::t_ac24792fa329bd 375-382
+  s_5224d267af9c0b::t_ced6cb813b9c29 12,42-45
+  s_5224d267af9c0b::t_c0ba06d287c6c2 532-538
+examples/kitchen-sink/catalog.toml
+  s_5224d267af9c0b::t_0a37958113d6e3 1-4
+README.md
+  s_5224d267af9c0b::t_a55b12dca05867 73,75,81-88,138
+examples/kitchen-sink/components/type-plain.stories.tsx
+  s_5224d267af9c0b::t_b68dde9941248e 1-3,5-29
+  s_5224d267af9c0b::t_54c1ff5896773d 4
+examples/kitchen-sink/components/type-commented.tsx
+  s_5224d267af9c0b::t_57f501c888b38e 1-35
+src/main.rs
+  s_5224d267af9c0b::t_235554c3a52fb7 8
+src/stories.rs
+  s_5224d267af9c0b::t_cdc298d7917614 7,71-74,202,217,254,405-416
+  s_5224d267af9c0b::t_e3d75e51455d8d 331-347,352-368,436-437,476-500,507-559
+  s_5224d267af9c0b::t_f49ba258785182 595
+  s_5224d267af9c0b::t_755842487bb12d 916-917,939-941,1154-1160,1243-1245,1251-1252,1258-1259
+  s_5224d267af9c0b::t_79aeea3b328144 10-11,15-16,102,171
+  s_5224d267af9c0b::t_15224520cbd98d 1275-1311,1317-1327
+  s_5224d267af9c0b::t_0da66f22cbe38d 184-190,203,298-301,348-351,380-382,447-449,501-506,598,691,842-845,934-938,957-960,969-974,991-994,1010-1012,1098-1099,1105-1109,1140-1144,1238-1242,1246-1250,1253-1257,1312-1316,1331-1334
+examples/kitchen-sink/stories/a11y-clean.story.toml
+  s_5224d267af9c0b::t_a68db123be2a06 1-16
+examples/kitchen-sink/run.sh
+  s_5224d267af9c0b::t_bac60cf86a659c 1-13
+examples/kitchen-sink/components/interface-commented.tsx
+  s_5224d267af9c0b::t_76ec4cf34416b4 1-36
+examples/kitchen-sink/build.sh
+  s_5224d267af9c0b::t_d97ba13f67946e 1-13
+examples/kitchen-sink/components/interface-commented.stories.jsx
+  s_5224d267af9c0b::t_769644d69d9857 1-3,5-21
+  s_5224d267af9c0b::t_54c1ff5896773d 4
+examples/kitchen-sink/components/interface-plain.tsx
+  s_5224d267af9c0b::t_2a745a504e9871 1-31
+examples/kitchen-sink/components/type-plain.tsx
+  s_5224d267af9c0b::t_211f1028ff8e1f 1-32
+examples/kitchen-sink/stories/toml-generated.story.toml
+  s_5224d267af9c0b::t_2659bad717284b 1-25
+examples/kitchen-sink/components/type-commented.stories.jsx
+  s_5224d267af9c0b::t_281f5ba211e842 1-3,5-25
+  s_5224d267af9c0b::t_54c1ff5896773d 4
+Cargo.toml
+  s_5224d267af9c0b::t_7d46cd247f6541 17,19,21
+  s_5224d267af9c0b::t_d063d621a6b4e1 15-16,18,20
+src/agents.rs
+  s_5224d267af9c0b::t_c25d60b2e90c4d 139
+src/csf.rs
+  s_5224d267af9c0b::t_0da66f22cbe38d 118-121,250-252,254-260
+  s_5224d267af9c0b::t_4a2ea2ab7e189d 167
+  s_5224d267af9c0b::t_35fd2011d7b21f 115-117,122
+  s_5224d267af9c0b::t_4fc6b80f1d57ef 8-9,104-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "99c0aba1a564bf0759f435a7ea2a2ce882455176",
+  "prompts": {},
+  "sessions": {
+    "s_5224d267af9c0b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0af07-cab6-73a3-9d34-6c22dddbb4ec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "nick <n@nick.qa>"
+    }
+  }
+}
