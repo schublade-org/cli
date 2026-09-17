@@ -27,7 +27,10 @@ use crate::cli::ServeArgs;
 use crate::config::AppConfig;
 use crate::render::render_story;
 use crate::shell;
+use crate::css_tokens;
+use crate::mdx;
 use crate::stories;
+use crate::tokens::{self, TokenSet};
 use crate::watch::{self, WatchSpec};
 
 struct AppState {
@@ -45,8 +48,22 @@ struct Workshop {
     catalog_path: Option<PathBuf>,
     stories_root: Option<PathBuf>,
     story_files: Vec<PathBuf>,
+    docs_root: Option<PathBuf>,
+    docs_files: Vec<PathBuf>,
+    tokens: TokenSet,
+    tokens_css: Option<PathBuf>,
     logo_path: Option<PathBuf>,
     favicon_path: Option<PathBuf>,
+}
+
+pub struct LoadedWorkshop {
+    pub catalog: Catalog,
+    pub catalog_path: Option<PathBuf>,
+    pub story_files: Vec<PathBuf>,
+    pub docs_root: Option<PathBuf>,
+    pub docs_files: Vec<PathBuf>,
+    pub tokens: TokenSet,
+    pub tokens_css: Option<PathBuf>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -108,18 +125,26 @@ fn load_workshop_from_args(args: &ServeArgs) -> Result<Workshop, String> {
         config.resolve_catalog_path(args.catalog.as_deref(), config_path.as_deref())?;
     let stories_root =
         config.resolve_stories_path(args.stories.as_deref(), config_path.as_deref())?;
-    let (catalog, catalog_path, story_files) =
-        load_workshop(&config, catalog_source.as_deref(), stories_root.as_deref())?;
+    let loaded = load_workshop(
+        &config,
+        catalog_source.as_deref(),
+        stories_root.as_deref(),
+        config_path.as_deref(),
+    )?;
     let logo_path = config.resolve_logo_path(config_path.as_deref())?;
     let favicon_path = config.resolve_favicon_path(config_path.as_deref())?;
 
     Ok(Workshop {
         config,
-        catalog,
+        catalog: loaded.catalog,
         config_path,
-        catalog_path,
+        catalog_path: loaded.catalog_path,
         stories_root,
-        story_files,
+        story_files: loaded.story_files,
+        docs_root: loaded.docs_root,
+        docs_files: loaded.docs_files,
+        tokens: loaded.tokens,
+        tokens_css: loaded.tokens_css,
         logo_path,
         favicon_path,
     })
@@ -182,6 +207,17 @@ fn print_catalog_line(workshop: &Workshop) {
     } else if workshop.stories_root.is_none() {
         println!("          bundled default");
     }
+    if !workshop.catalog.pages.is_empty() {
+        println!(
+            "          {} docs page{}",
+            workshop.catalog.pages.len(),
+            if workshop.catalog.pages.len() == 1 {
+                ""
+            } else {
+                "s"
+            }
+        );
+    }
     if let Some(root) = &workshop.stories_root {
         println!(
             "          stories {} ({} file{})",
@@ -193,6 +229,21 @@ fn print_catalog_line(workshop: &Workshop) {
                 "s"
             }
         );
+    }
+    if let Some(root) = &workshop.docs_root {
+        println!(
+            "          docs {} ({} file{})",
+            root.display(),
+            workshop.docs_files.len(),
+            if workshop.docs_files.len() == 1 {
+                ""
+            } else {
+                "s"
+            }
+        );
+    }
+    if let Some(path) = &workshop.tokens_css {
+        println!("          tokens {}", path.display());
     }
 }
 
@@ -262,10 +313,13 @@ fn apply_watches(
     watching: &mut BTreeSet<(PathBuf, bool)>,
     workshop: &Workshop,
 ) {
+    let extra: Vec<PathBuf> = workshop.tokens_css.iter().cloned().collect();
     for spec in watch::watch_specs(
         workshop.config_path.as_deref(),
         workshop.catalog_path.as_deref(),
         workshop.stories_root.as_deref(),
+        workshop.docs_root.as_deref(),
+        &extra,
     ) {
         watch_spec(watcher, watching, &spec);
     }
@@ -308,16 +362,16 @@ fn event_is_interesting(state: &AppState, result: Result<notify::Event, notify::
     if matches!(event.kind, EventKind::Access(_) | EventKind::Other) {
         return false;
     }
-    let stories_root = state
+    let workshop = state
         .workshop
         .read()
-        .unwrap_or_else(|error| error.into_inner())
-        .stories_root
-        .clone();
+        .unwrap_or_else(|error| error.into_inner());
+    let stories_root = workshop.stories_root.clone();
+    let docs_root = workshop.docs_root.clone();
     event
         .paths
         .iter()
-        .any(|path| watch::should_reload(path, stories_root.as_deref()))
+        .any(|path| watch::should_reload(path, stories_root.as_deref(), docs_root.as_deref()))
 }
 
 fn reload_workshop(state: &AppState) -> Result<Workshop, String> {
@@ -338,7 +392,8 @@ pub fn load_workshop(
     config: &AppConfig,
     catalog_source: Option<&Path>,
     stories_root: Option<&Path>,
-) -> Result<(Catalog, Option<PathBuf>, Vec<PathBuf>), String> {
+    config_path: Option<&Path>,
+) -> Result<LoadedWorkshop, String> {
     let (mut catalog, catalog_path) = match catalog_source {
         Some(path) => Catalog::load(Some(path))?,
         None if stories_root.is_some() => (
@@ -359,7 +414,37 @@ pub fn load_workshop(
         catalog.merge_stories(discovered.stories);
     }
 
-    Ok((catalog, catalog_path, story_files))
+    let tokens_css = config.resolve_tokens_css_path(config_path)?;
+
+    let mut tokens = TokenSet::default();
+    if let Some(path) = &tokens_css {
+        tokens.merge(css_tokens::load_css_file(path)?);
+    }
+    tokens.merge(config.tokens.from_manual());
+
+    let docs_root = config.resolve_docs_path(config_path)?;
+    let (pages, docs_files) = if let Some(root) = &docs_root {
+        let discovered = mdx::discover(root, &tokens)?;
+        (discovered.pages, discovered.files)
+    } else {
+        (Vec::new(), Vec::new())
+    };
+    let pages = if pages.is_empty() {
+        tokens::preset_pages(&tokens)
+    } else {
+        pages
+    };
+    catalog.attach_pages(pages)?;
+
+    Ok(LoadedWorkshop {
+        catalog,
+        catalog_path,
+        story_files,
+        docs_root,
+        docs_files,
+        tokens,
+        tokens_css,
+    })
 }
 
 async fn shutdown_signal() {
@@ -488,6 +573,7 @@ fn markdown_response(body: String) -> Response {
 fn live_bootstrap(workshop: &Workshop) -> Bootstrap {
     Bootstrap {
         catalog: workshop.catalog.clone(),
+        tokens: workshop.tokens.clone(),
         theme: workshop.config.theme.clone(),
         a11y: A11yBootstrap::from_config(workshop.config.a11y.enabled, &workshop.config.a11y.rules),
         brand: BrandBootstrap::live(&workshop.catalog.name, workshop.logo_path.is_some()),
@@ -724,6 +810,36 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
         panic!("watcher did not reload after schublade.toml changed");
+    }
+
+    #[test]
+    fn bundled_docs_and_css_tokens_load() {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let (config, path) = AppConfig::load(Some(&manifest.join("schublade.toml"))).unwrap();
+        let loaded = load_workshop(
+            &config,
+            Some(&manifest.join("catalog.toml")),
+            None,
+            path.as_deref(),
+        )
+        .unwrap();
+        assert_eq!(loaded.catalog.name, "Demo catalog");
+        assert!(loaded.catalog.page("colors").is_some());
+        assert!(loaded.catalog.page("typography").is_some());
+        assert!(
+            loaded.tokens.colors.iter().any(|scale| scale.id == "yellow"),
+            "{:?}",
+            loaded.tokens.colors.iter().map(|scale| &scale.id).collect::<Vec<_>>()
+        );
+        assert!(loaded.tokens.colors.iter().any(|scale| scale.id == "ink"));
+        assert!(loaded
+            .tokens
+            .typography
+            .styles
+            .iter()
+            .any(|style| style.id == "display-xl"));
+        assert!(loaded.tokens_css.is_some());
+        assert_eq!(loaded.docs_files.len(), 2);
     }
 
     #[tokio::test]

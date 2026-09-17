@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::config::{A11yRule, ThemeConfig};
+use crate::tokens::{ColorScale, TokenSet, TokenSource};
 
 const DEFAULT_CATALOG: &str = include_str!("../catalog.toml");
 
@@ -11,6 +12,45 @@ pub struct Catalog {
     pub name: String,
     #[serde(default)]
     pub stories: Vec<Story>,
+    /// Docs/token pages from `*.mdx` or the token preset. Not a second story format.
+    #[serde(default, skip_deserializing)]
+    pub pages: Vec<Page>,
+}
+
+/// Workshop docs page. CSF + `catalog.toml` stay the story source of truth.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Page {
+    pub id: String,
+    pub title: String,
+    pub section: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    pub blocks: Vec<PageBlock>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum PageBlock {
+    Heading {
+        level: u8,
+        text: String,
+    },
+    Paragraph {
+        text: String,
+    },
+    ColorScales {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        source: Option<TokenSource>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        scales: Option<Vec<ColorScale>>,
+    },
+    ColorScale {
+        scale: ColorScale,
+    },
+    Typography {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        source: Option<TokenSource>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -144,6 +184,8 @@ pub struct SelectOption {
 #[derive(Debug, Clone, Serialize)]
 pub struct Bootstrap {
     pub catalog: Catalog,
+    #[serde(default)]
+    pub tokens: TokenSet,
     pub theme: ThemeConfig,
     pub a11y: A11yBootstrap,
     pub brand: BrandBootstrap,
@@ -213,6 +255,7 @@ impl Catalog {
         Self {
             name: name.into(),
             stories: Vec::new(),
+            pages: Vec::new(),
         }
     }
 
@@ -236,6 +279,39 @@ impl Catalog {
     pub fn story(&self, id: &str) -> Option<&Story> {
         self.stories.iter().find(|story| story.id == id)
     }
+
+    pub fn page(&self, id: &str) -> Option<&Page> {
+        self.pages.iter().find(|page| page.id == id)
+    }
+
+    pub fn attach_pages(&mut self, pages: Vec<Page>) -> Result<(), String> {
+        for page in &pages {
+            if !is_safe_page_id(&page.id) {
+                return Err(format!("invalid page id '{}'", page.id));
+            }
+            if self.story(&page.id).is_some() {
+                return Err(format!(
+                    "page id '{}' collides with a story id — CSF/catalog stories stay unique",
+                    page.id
+                ));
+            }
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for page in &pages {
+            if !seen.insert(page.id.as_str()) {
+                return Err(format!("duplicate page id '{}'", page.id));
+            }
+        }
+        self.pages = pages;
+        Ok(())
+    }
+}
+
+fn is_safe_page_id(id: &str) -> bool {
+    !id.is_empty()
+        && id
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_')
 }
 
 impl Story {
@@ -287,7 +363,7 @@ mod tests {
     fn bundled_catalog_parses() {
         let (catalog, path) = Catalog::load(None).unwrap();
         assert!(path.is_none());
-        assert_eq!(catalog.name, "Aarau Designsystem");
+        assert_eq!(catalog.name, "Demo catalog");
         assert!(catalog.story("avatar-group").is_some());
         assert!(catalog.stories.iter().any(|story| story.id == "button"));
         let ghost = catalog.story("button-ghost").expect("button-ghost");
@@ -423,5 +499,35 @@ template = "<button>ghost</button>"
         assert_eq!(story.group.as_deref(), Some("Button"));
         assert_eq!(story.item, "Ghost");
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn page_ids_must_not_collide_with_stories() {
+        let mut catalog = Catalog::empty("Demo");
+        catalog.stories.push(Story {
+            id: "colors".into(),
+            title: "Colors".into(),
+            group: None,
+            item: String::new(),
+            section: "Components".into(),
+            description: String::new(),
+            generator: Generator::Html,
+            template: None,
+            code: String::new(),
+            controls: Vec::new(),
+            component_source: None,
+            component_export: None,
+            component_name: None,
+        });
+        let error = catalog
+            .attach_pages(vec![Page {
+                id: "colors".into(),
+                title: "Colors".into(),
+                section: "Foundations".into(),
+                description: String::new(),
+                blocks: Vec::new(),
+            }])
+            .unwrap_err();
+        assert!(error.contains("collides"), "{error}");
     }
 }

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::cli::ServeArgs;
+use crate::tokens::TokensConfig;
 
 const DEFAULT_TOML: &str = include_str!("../schublade.toml");
 
@@ -17,6 +18,12 @@ pub struct AppConfig {
     /// Directory to walk for `*.stories.js(x)` / `*.stories.toml` files. Relative to the config file.
     #[serde(default)]
     pub stories: Option<PathBuf>,
+    /// Directory to walk for docs/token `*.mdx` pages. Relative to the config file.
+    #[serde(default)]
+    pub docs: Option<PathBuf>,
+    /// Token adapters (manual + CSS). Figma/Paper MCP are sketched only.
+    #[serde(default)]
+    pub tokens: TokensConfig,
     #[serde(default)]
     pub server: ServerConfig,
     #[serde(default)]
@@ -227,6 +234,31 @@ impl AppConfig {
         Ok(Some(resolved))
     }
 
+    pub fn resolve_docs_path(&self, config_path: Option<&Path>) -> Result<Option<PathBuf>, String> {
+        let Some(configured) = &self.docs else {
+            return Ok(None);
+        };
+        let resolved = resolve_against(configured, config_path);
+        if !resolved.exists() {
+            return Ok(None);
+        }
+        Ok(Some(resolved))
+    }
+
+    pub fn resolve_tokens_css_path(
+        &self,
+        config_path: Option<&Path>,
+    ) -> Result<Option<PathBuf>, String> {
+        let Some(configured) = &self.tokens.css else {
+            return Ok(None);
+        };
+        let resolved = resolve_against(configured, config_path);
+        if !resolved.exists() {
+            return Ok(None);
+        }
+        Ok(Some(resolved))
+    }
+
     pub fn resolve_logo_path(&self, config_path: Option<&Path>) -> Result<Option<PathBuf>, String> {
         resolve_existing_optional(self.logo.as_deref(), config_path, "logo")
     }
@@ -361,6 +393,12 @@ mod tests {
         assert_eq!(config.theme.trigger, ThemeTrigger::DataAttribute);
         assert!(config.a11y.rules.contains(&A11yRule::ImageAlt));
         assert!(config.stories.is_none());
+        assert_eq!(config.docs.as_deref(), Some(std::path::Path::new("./docs")));
+        assert_eq!(
+            config.tokens.css.as_deref(),
+            Some(std::path::Path::new("./tokens.css"))
+        );
+        assert_eq!(config.tokens.colors.len(), 1);
     }
 
     #[test]

@@ -21,8 +21,22 @@ export function splitTitle(title) {
 }
 
 export function groupStories(stories) {
+  return groupNav([], stories);
+}
+
+export function groupNav(pages = [], stories = []) {
   const sections = [];
   const bySection = new Map();
+
+  for (const page of pages) {
+    const sectionName = page.section || "Foundations";
+    if (!bySection.has(sectionName)) {
+      const section = { name: sectionName, entries: [] };
+      bySection.set(sectionName, section);
+      sections.push(section);
+    }
+    bySection.get(sectionName).entries.push({ type: "page", page });
+  }
 
   for (const story of stories) {
     const sectionName = story.section || "Components";

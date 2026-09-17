@@ -1,9 +1,30 @@
 # Schublade workshop configuration.
 # Consumers point the CLI at this file; no JavaScript toolchain is required.
 
-# Catalog next to this file is the default Aarau demo. Examples under
+# Catalog next to this file is the default demo. Examples under
 # examples/ ship their own schublade.toml + catalog.toml and invoke this CLI.
 catalog = "./catalog.toml"
+
+# Docs/token pages (MDX). Not a second story format — CSF + catalog.toml
+# still own stories.
+docs = "./docs"
+
+# Token adapters (see src/tokens.rs):
+# 1. Figma MCP — sketch only, not implemented
+# 2. Paper MCP — sketch only, not implemented
+# 3. Manual — [[tokens.colors]] / [tokens.typography] and MDX component props
+# 4. CSS file — custom properties, walked like CSF source
+[tokens]
+css = "./tokens.css"
+
+[[tokens.colors]]
+name = "Ink"
+id = "ink"
+steps = { 50 = "#f8fafc", 100 = "#f1f5f9", 200 = "#e2e8f0", 300 = "#cbd5e1", 400 = "#94a3b8", 500 = "#64748b", 600 = "#475569", 700 = "#334155", 800 = "#1e293b", 900 = "#0f172a", 950 = "#020617" }
+
+[[tokens.typography.families]]
+token = "--font-family-article"
+value = "Georgia, 'Times New Roman', serif"
 
 # Optional workshop chrome. Paths are relative to this file.
 # logo = "./logo.svg"

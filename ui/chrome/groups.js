@@ -18,8 +18,20 @@ function splitTitle(title) {
   return { group, item };
 }
 function groupStories(stories) {
+  return groupNav([], stories);
+}
+function groupNav(pages = [], stories = []) {
   const sections = [];
   const bySection = /* @__PURE__ */ new Map();
+  for (const page of pages) {
+    const sectionName = page.section || "Foundations";
+    if (!bySection.has(sectionName)) {
+      const section = { name: sectionName, entries: [] };
+      bySection.set(sectionName, section);
+      sections.push(section);
+    }
+    bySection.get(sectionName).entries.push({ type: "page", page });
+  }
   for (const story of stories) {
     const sectionName = story.section || "Components";
     if (!bySection.has(sectionName)) {
@@ -43,6 +55,7 @@ function groupStories(stories) {
   return sections;
 }
 export {
+  groupNav,
   groupStories,
   navGroup,
   navItem,
