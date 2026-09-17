@@ -1,10 +1,21 @@
 import { useMemo, useState } from "react";
 import { Collapsible } from "@base-ui/react/collapsible";
 import { IconChevronDown } from "./icons.js";
-import { groupStories, navItem } from "./groups.js";
+import { groupNav, navItem } from "./groups.js";
 
-export function Sidebar({ catalogName, logoUrl, stories, storyId, onSelect, open, onClose }) {
-  const sections = useMemo(() => groupStories(stories), [stories]);
+export function Sidebar({
+  catalogName,
+  logoUrl,
+  pages = [],
+  stories,
+  selectedId,
+  storyId,
+  onSelect,
+  open,
+  onClose,
+}) {
+  const activeId = selectedId ?? storyId;
+  const sections = useMemo(() => groupNav(pages, stories), [pages, stories]);
 
   return (
     <aside className={`sidebar${open ? " is-open" : ""}`} id="sidebar">
@@ -16,9 +27,9 @@ export function Sidebar({ catalogName, logoUrl, stories, storyId, onSelect, open
         )}
         <span className="brand-name">{catalogName}</span>
       </div>
-      <nav className="nav" aria-label="Stories">
-        {stories.length === 0 ? (
-          <p className="nav-empty">No stories in this catalog.</p>
+      <nav className="nav" aria-label="Catalog">
+        {pages.length === 0 && stories.length === 0 ? (
+          <p className="nav-empty">No pages or stories in this catalog.</p>
         ) : (
           sections.map((section) => (
             <section className="nav-section" key={section.name}>
@@ -26,12 +37,27 @@ export function Sidebar({ catalogName, logoUrl, stories, storyId, onSelect, open
               <ul className="nav-list">
                 {section.entries.map((entry) => {
                   switch (entry.type) {
+                    case "page":
+                      return (
+                        <li key={entry.page.id}>
+                          <button
+                            type="button"
+                            className={`nav-item${entry.page.id === activeId ? " is-active" : ""}`}
+                            onClick={() => {
+                              onSelect(entry.page.id);
+                              onClose();
+                            }}
+                          >
+                            {entry.page.title}
+                          </button>
+                        </li>
+                      );
                     case "story":
                       return (
                         <li key={entry.story.id}>
                           <button
                             type="button"
-                            className={`nav-item${entry.story.id === storyId ? " is-active" : ""}`}
+                            className={`nav-item${entry.story.id === activeId ? " is-active" : ""}`}
                             onClick={() => {
                               onSelect(entry.story.id);
                               onClose();
@@ -46,7 +72,7 @@ export function Sidebar({ catalogName, logoUrl, stories, storyId, onSelect, open
                         <NavGroup
                           key={entry.name}
                           entry={entry}
-                          storyId={storyId}
+                          storyId={activeId}
                           onSelect={(id) => {
                             onSelect(id);
                             onClose();

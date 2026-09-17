@@ -1,4 +1,4 @@
-name = "Aarau Designsystem"
+name = "Demo catalog"
 
 [[stories]]
 id = "accordion"
@@ -26,7 +26,7 @@ default = "Delivery and returns"
 kind = "text"
 id = "body"
 label = "Body"
-default = "Orders placed before 14:00 CET leave Aarau the same day. Returns are free for 30 days."
+default = "Orders placed before 14:00 CET leave the warehouse the same day. Returns are free for 30 days."
 
 [[stories.controls]]
 kind = "boolean"

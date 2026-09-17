@@ -16,6 +16,8 @@ pub fn watch_specs(
     config_path: Option<&Path>,
     catalog_path: Option<&Path>,
     stories_root: Option<&Path>,
+    docs_root: Option<&Path>,
+    extra_files: &[PathBuf],
 ) -> Vec<WatchSpec> {
     let mut specs = BTreeSet::new();
 
@@ -35,6 +37,18 @@ pub fn watch_specs(
         specs.insert(WatchSpec {
             path: path.to_path_buf(),
             recursive: true,
+        });
+    }
+    if let Some(path) = docs_root {
+        specs.insert(WatchSpec {
+            path: path.to_path_buf(),
+            recursive: true,
+        });
+    }
+    for path in extra_files {
+        specs.insert(WatchSpec {
+            path: watch_dir_for_file(path),
+            recursive: false,
         });
     }
 
@@ -76,7 +90,11 @@ pub fn is_noise_path(path: &Path) -> bool {
 }
 
 /// Whether a filesystem event should trigger catalog + story reload.
-pub fn should_reload(path: &Path, stories_root: Option<&Path>) -> bool {
+pub fn should_reload(
+    path: &Path,
+    stories_root: Option<&Path>,
+    docs_root: Option<&Path>,
+) -> bool {
     if is_noise_path(path) {
         return false;
     }
@@ -94,10 +112,15 @@ pub fn should_reload(path: &Path, stories_root: Option<&Path>) -> bool {
             return true;
         }
     }
+    if let Some(root) = docs_root {
+        if path.starts_with(root) {
+            return true;
+        }
+    }
 
     matches!(
         path.extension().and_then(|ext| ext.to_str()),
-        Some("js" | "jsx" | "html" | "css" | "toml" | "svg" | "png" | "ico" | "webp")
+        Some("js" | "jsx" | "html" | "css" | "toml" | "mdx" | "svg" | "png" | "ico" | "webp")
     )
 }
 
@@ -111,6 +134,8 @@ mod tests {
             Some(Path::new("examples/story-files/schublade.toml")),
             Some(Path::new("examples/story-files/catalog.toml")),
             Some(Path::new("examples/story-files/components")),
+            None,
+            &[],
         );
         assert!(specs.contains(&WatchSpec {
             path: PathBuf::from("examples/story-files"),
@@ -129,6 +154,8 @@ mod tests {
             Some(Path::new("examples/empty-catalog/schublade.toml")),
             Some(Path::new("examples/empty-catalog/catalog.toml")),
             None,
+            None,
+            &[],
         );
         assert_eq!(
             specs,
@@ -141,7 +168,7 @@ mod tests {
 
     #[test]
     fn bundled_defaults_watch_cwd() {
-        let specs = watch_specs(None, None, None);
+        let specs = watch_specs(None, None, None, None, &[]);
         assert_eq!(
             specs,
             vec![WatchSpec {
@@ -153,18 +180,48 @@ mod tests {
 
     #[test]
     fn reloads_toml_and_story_sources() {
-        assert!(should_reload(Path::new("examples/a11y/schublade.toml"), None));
-        assert!(should_reload(Path::new("examples/a11y/catalog.toml"), None));
+        assert!(should_reload(Path::new("examples/a11y/schublade.toml"), None, None));
+        assert!(should_reload(Path::new("examples/a11y/catalog.toml"), None, None));
         assert!(should_reload(
             Path::new("components/button.stories.jsx"),
-            Some(Path::new("components"))
+            Some(Path::new("components")),
+            None
         ));
         assert!(should_reload(
             Path::new("components/button.jsx"),
-            Some(Path::new("components"))
+            Some(Path::new("components")),
+            None
         ));
-        assert!(!should_reload(Path::new("README.md"), None));
-        assert!(!should_reload(Path::new("components/.DS_Store"), Some(Path::new("components"))));
-        assert!(!should_reload(Path::new("target/debug/schublade"), None));
+        assert!(should_reload(
+            Path::new("docs/colors.mdx"),
+            None,
+            Some(Path::new("docs"))
+        ));
+        assert!(!should_reload(Path::new("README.md"), None, None));
+        assert!(!should_reload(
+            Path::new("components/.DS_Store"),
+            Some(Path::new("components")),
+            None
+        ));
+        assert!(!should_reload(Path::new("target/debug/schublade"), None, None));
+    }
+
+    #[test]
+    fn watches_docs_tree_and_token_css_parent() {
+        let specs = watch_specs(
+            Some(Path::new("schublade.toml")),
+            Some(Path::new("catalog.toml")),
+            None,
+            Some(Path::new("docs")),
+            &[PathBuf::from("tokens.css")],
+        );
+        assert!(specs.contains(&WatchSpec {
+            path: PathBuf::from("docs"),
+            recursive: true,
+        }));
+        assert!(specs.contains(&WatchSpec {
+            path: PathBuf::from("."),
+            recursive: false,
+        }));
     }
 }

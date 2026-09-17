@@ -1,0 +1,80 @@
+/* Adapter 4: Tailwind theme variables. Prefix map lives in src/css_tokens.rs. */
+
+@theme {
+  --color-yellow-50: #fffbeb;
+  --color-yellow-100: #fef3c7;
+  --color-yellow-200: #fde68a;
+  --color-yellow-300: #f6d453;
+  --color-yellow-400: #e8be24;
+  --color-yellow-500: #c99a12;
+  --color-yellow-600: #a67c0c;
+  --color-yellow-700: #855f0c;
+  --color-yellow-800: #6b4a10;
+  --color-yellow-900: #4a320c;
+  --color-yellow-950: #2a1b06;
+
+  --color-violet-50: #f5f3ff;
+  --color-violet-100: #ede9fe;
+  --color-violet-200: #ddd6fe;
+  --color-violet-300: #c4b5fd;
+  --color-violet-400: #a78bfa;
+  --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+  --color-violet-700: #6d28d9;
+  --color-violet-800: #5b21b6;
+  --color-violet-900: #4c1d95;
+  --color-violet-950: #2e1065;
+
+  --color-pink-50: #fdf2f8;
+  --color-pink-100: #fce7f3;
+  --color-pink-200: #fbcfe8;
+  --color-pink-300: #f9a8d4;
+  --color-pink-400: #f472b6;
+  --color-pink-500: #ec4899;
+  --color-pink-600: #db2777;
+  --color-pink-700: #be185d;
+  --color-pink-800: #9d174d;
+  --color-pink-900: #831843;
+  --color-pink-950: #500724;
+
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-800: #9a3412;
+  --color-orange-900: #7c2d12;
+  --color-orange-950: #431407;
+
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1.05;
+  --text-display-lg: 3.75rem;
+  --text-display-lg--line-height: 1.05;
+  --text-display-md: 3rem;
+  --text-display-md--line-height: 1.08;
+  --text-display-sm: 2.5rem;
+  --text-display-sm--line-height: 1.1;
+  --text-display-xs: 2rem;
+  --text-display-xs--line-height: 1.15;
+  --text-display-2xs: 1.75rem;
+  --text-display-2xs--line-height: 1.2;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.5;
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.5;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.45;
+  --text-label-md: 0.875rem;
+  --text-label-md--line-height: 1.35;
+  --text-label-sm: 0.8125rem;
+  --text-label-sm--line-height: 1.35;
+  --text-article-md: 1rem;
+  --text-article-md--line-height: 1.6;
+  --text-article-italic: 1rem;
+  --text-article-italic--line-height: 1.6;
+
+  --font-sans: "Inter Variable", Inter, sans-serif;
+}

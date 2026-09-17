@@ -339,6 +339,10 @@ fn parse_object(raw: &str) -> Result<Map<String, Value>, String> {
     parser.parse_object()
 }
 
+pub(crate) fn parse_js_object(raw: &str) -> Result<Map<String, Value>, String> {
+    parse_object(raw)
+}
+
 struct JsParser<'a> {
     src: &'a str,
     i: usize,
@@ -426,6 +430,13 @@ impl<'a> JsParser<'a> {
         match self.peek() {
             Some('"') | Some('\'') => self.parse_string(),
             Some(ch) if is_ident_start(ch) => Ok(self.parse_ident()),
+            Some(ch) if ch.is_ascii_digit() => {
+                let start = self.i;
+                while self.peek().is_some_and(|next| next.is_ascii_digit()) {
+                    self.i += 1;
+                }
+                Ok(self.src[start..self.i].to_string())
+            }
             other => Err(format!("expected object key, got {other:?}")),
         }
     }
@@ -672,5 +683,12 @@ export default {
         assert_eq!(file.imports[0].path, PathBuf::from("./badge.html"));
         assert_eq!(file.args["tone"], Value::String("neutral".into()));
         assert!(file.variants.is_empty());
+    }
+
+    #[test]
+    fn parses_numeric_object_keys() {
+        let object = parse_object(r##"{ 50: "#fffbeb", 100: "#fef3c7" }"##).unwrap();
+        assert_eq!(object["50"], Value::String("#fffbeb".into()));
+        assert_eq!(object["100"], Value::String("#fef3c7".into()));
     }
 }

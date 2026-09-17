@@ -21,8 +21,15 @@ pub fn run(args: BuildArgs) -> Result<(), String> {
         config.resolve_catalog_path(args.catalog.as_deref(), config_path.as_deref())?;
     let stories_root =
         config.resolve_stories_path(args.stories.as_deref(), config_path.as_deref())?;
-    let (catalog, catalog_path, story_files) =
-        server::load_workshop(&config, catalog_source.as_deref(), stories_root.as_deref())?;
+    let loaded = server::load_workshop(
+        &config,
+        catalog_source.as_deref(),
+        stories_root.as_deref(),
+        config_path.as_deref(),
+    )?;
+    let catalog = loaded.catalog;
+    let catalog_path = loaded.catalog_path;
+    let story_files = loaded.story_files;
 
     let logo_path = config.resolve_logo_path(config_path.as_deref())?;
     let favicon_path = config.resolve_favicon_path(config_path.as_deref())?;
@@ -36,6 +43,7 @@ pub fn run(args: BuildArgs) -> Result<(), String> {
 
     let bootstrap = Bootstrap {
         catalog: catalog.clone(),
+        tokens: loaded.tokens,
         theme: config.theme.clone(),
         a11y: A11yBootstrap::from_config(config.a11y.enabled, &config.a11y.rules),
         brand: BrandBootstrap::static_site(&catalog.name, logo_file.clone(), favicon_file.clone()),
@@ -67,6 +75,13 @@ pub fn run(args: BuildArgs) -> Result<(), String> {
     );
     if let Some(path) = &catalog_path {
         println!("          catalog {}", path.display());
+    }
+    if !catalog.pages.is_empty() {
+        println!(
+            "          {} docs page{}",
+            catalog.pages.len(),
+            if catalog.pages.len() == 1 { "" } else { "s" }
+        );
     }
     if let Some(root) = &stories_root {
         println!(
@@ -275,10 +290,12 @@ default = "Save"
 "#,
         )
         .unwrap();
+        let config = root.join("schublade.toml");
+        std::fs::write(&config, "catalog = \"./catalog.toml\"\n").unwrap();
 
         let out = root.join("dist");
         run(BuildArgs {
-            config: None,
+            config: Some(config),
             catalog: Some(catalog),
             stories: None,
             name: Some("Static kit".into()),
@@ -320,6 +337,8 @@ default = "Save"
         assert_eq!(bootstrap["brand"]["favicon"], "./favicon.svg");
         assert_eq!(bootstrap["static"], true);
         assert_eq!(bootstrap["catalog"]["stories"].as_array().unwrap().len(), 1);
+        assert!(bootstrap["catalog"]["pages"].as_array().unwrap().is_empty());
+        assert!(bootstrap["tokens"]["colors"].as_array().unwrap().is_empty());
 
         assert!(out.join("render.js").exists());
         assert!(out.join("chrome/main.js").exists());

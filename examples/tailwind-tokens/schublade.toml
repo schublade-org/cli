@@ -1,0 +1,26 @@
+# Tailwind theme CSS as the token source. No JS toolchain.
+catalog = "./catalog.toml"
+docs = "./docs"
+
+[tokens]
+css = "./theme.css"
+
+[server]
+host = "0.0.0.0"
+port = 47309
+
+[theme]
+trigger = "data-attribute"
+key = "data-theme"
+light = "light"
+dark = "dark"
+
+[a11y]
+enabled = true
+rules = [
+  "image-alt",
+  "button-name",
+  "link-name",
+  "label",
+  "control-name",
+]

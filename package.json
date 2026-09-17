@@ -9,7 +9,7 @@
   "scripts": {
     "dev:workshop": "vite --config workshop/vite.config.js",
     "build:workshop": "node workshop/build.mjs",
-    "test:workshop": "node workshop/groups.test.mjs && node workshop/dev/mock.test.mjs && node workshop/dev/server.test.mjs",
+    "test:workshop": "node workshop/groups.test.mjs && node workshop/tokens.test.mjs && node workshop/dev/mock.test.mjs && node workshop/dev/server.test.mjs",
     "test:npm": "node npm/test/platform.test.js && node npm/test/resolve.test.js && node npm/test/cargo.test.js && node npm/test/pack-platform.test.js && node npm/test/bin-integration.test.js && npm run test:workshop"
   },
   "devDependencies": {

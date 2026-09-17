@@ -43,7 +43,7 @@ const BUTTON_CODE =
 
 export const bootstrap = {
   catalog: {
-    name: "Aarau Designsystem",
+    name: "Demo catalog",
     stories: [
       {
         id: "accordion",
@@ -68,7 +68,7 @@ export const bootstrap = {
             kind: "text",
             id: "body",
             label: "Body",
-            default: "Orders placed before 14:00 CET leave Aarau the same day.",
+            default: "Orders placed before 14:00 CET leave the warehouse the same day.",
           },
           { kind: "boolean", id: "open", label: "Open by default", default: true },
         ],
@@ -231,7 +231,31 @@ export const bootstrap = {
         controls: [],
       },
     ],
+    pages: [
+      {
+        id: "colors",
+        title: "Colors",
+        section: "Foundations",
+        description: "Color scales from the CSS token file, plus a manual ink scale.",
+        blocks: [{ type: "color-scales" }],
+      },
+      {
+        id: "typography",
+        title: "Typography",
+        section: "Foundations",
+        description: "Type roles from the CSS token file. Switch Styles and Tokens.",
+        blocks: [{ type: "typography" }],
+      },
+      {
+        id: "tokens",
+        title: "Tokens",
+        section: "Foundations",
+        description: "Other Tailwind theme families from the CSS token file.",
+        blocks: [{ type: "tokens" }],
+      },
+    ],
   },
+  tokens: mockTokens(),
   theme: {
     trigger: "data-attribute",
     key: "data-theme",
@@ -243,8 +267,100 @@ export const bootstrap = {
     rules: A11Y_RULES,
   },
   brand: {
-    name: "Aarau Designsystem",
+    name: "Demo catalog",
     logo: "/brand/logo",
     favicon: "/brand/favicon",
   },
 };
+
+function mockTokens() {
+  const yellow = ["#fffbeb", "#fef3c7", "#fde68a", "#f6d453", "#e8be24", "#c99a12", "#a67c0c", "#855f0c", "#6b4a10", "#4a320c", "#2a1b06"];
+  const violet = ["#f5f3ff", "#ede9fe", "#ddd6fe", "#c4b5fd", "#a78bfa", "#8b5cf6", "#7c3aed", "#6d28d9", "#5b21b6", "#4c1d95", "#2e1065"];
+  const pink = ["#fdf2f8", "#fce7f3", "#fbcfe8", "#f9a8d4", "#f472b6", "#ec4899", "#db2777", "#be185d", "#9d174d", "#831843", "#500724"];
+  const orange = ["#fff7ed", "#ffedd5", "#fed7aa", "#fdba74", "#fb923c", "#f97316", "#ea580c", "#c2410c", "#9a3412", "#7c2d12", "#431407"];
+  const ink = ["#f8fafc", "#f1f5f9", "#e2e8f0", "#cbd5e1", "#94a3b8", "#64748b", "#475569", "#334155", "#1e293b", "#0f172a", "#020617"];
+  const steps = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"];
+  const scale = (id, name, values, source) => ({
+    id,
+    name,
+    source,
+    steps: steps.map((step, index) => ({
+      step,
+      value: values[index],
+      token: `--color-${id}-${step}`,
+    })),
+  });
+  const type = (id, label, group, fontSize, lineHeight, extra = {}) => ({
+    id,
+    label,
+    group,
+    fontSize,
+    lineHeight,
+    source: "css",
+    ...extra,
+  });
+  return {
+    colors: [
+      scale("yellow", "Yellow", yellow, "css"),
+      scale("violet", "Violet", violet, "css"),
+      scale("pink", "Pink", pink, "css"),
+      scale("orange", "Orange", orange, "css"),
+      scale("ink", "Ink", ink, "manual"),
+    ],
+    typography: {
+      styles: [
+        type("display-xl", "Display / xl", "Display", "4.5rem", "1.05"),
+        type("display-lg", "Display / lg", "Display", "3.75rem", "1.05"),
+        type("display-md", "Display / md", "Display", "3rem", "1.08"),
+        type("display-sm", "Display / sm", "Display", "2.5rem", "1.1"),
+        type("display-xs", "Display / xs", "Display", "2rem", "1.15"),
+        type("display-2xs", "Display / 2xs", "Display", "1.75rem", "1.2"),
+        type("body-lg", "Body / lg", "Body", "1.125rem", "1.5"),
+        type("body-md", "Body / md", "Body", "1rem", "1.5"),
+        type("body-sm", "Body / sm", "Body", "0.875rem", "1.45"),
+        type("label-md", "Label / md", "Label", "0.875rem", "1.35"),
+        type("label-sm", "Label / sm", "Label", "0.8125rem", "1.35"),
+        type("article-md", "Article / md", "Article", "1rem", "1.6"),
+        type("article-italic", "Article / italic", "Article", "1rem", "1.6", { fontStyle: "italic" }),
+      ],
+      families: [
+        { token: "--font-sans", value: '"Inter Variable", Inter, sans-serif', source: "css" },
+        { token: "--font-family-article", value: "Georgia, 'Times New Roman', serif", source: "manual" },
+      ],
+      roles: [
+        { token: "--text-display-xl", value: "4.5rem / 1.05", source: "css" },
+        { token: "--text-body-md", value: "1rem / 1.5", source: "css" },
+      ],
+    },
+    groups: [
+      {
+        id: "spacing",
+        name: "Spacing",
+        rows: [
+          { token: "--spacing", value: "0.25rem", source: "css" },
+          { token: "--spacing-4", value: "1rem", source: "css" },
+        ],
+      },
+      {
+        id: "radius",
+        name: "Radius",
+        rows: [{ token: "--radius-md", value: "0.375rem", source: "css" }],
+      },
+      {
+        id: "shadow",
+        name: "Shadow",
+        rows: [{ token: "--shadow-sm", value: "0 1px 2px rgb(0 0 0 / 0.05)", source: "css" }],
+      },
+      {
+        id: "tab-size",
+        name: "Tab size",
+        rows: [{ token: "--tab-size-4", value: "4", source: "css" }],
+      },
+      {
+        id: "zoom",
+        name: "Zoom",
+        rows: [{ token: "--zoom-compact", value: "0.9", source: "css" }],
+      },
+    ],
+  };
+}

@@ -186,15 +186,16 @@ mod tests {
 
     fn sample_catalog() -> Catalog {
         Catalog {
-            name: "Aarau Designsystem".into(),
+            name: "Demo catalog".into(),
             stories: vec![sample_story()],
+            pages: Vec::new(),
         }
     }
 
     #[test]
     fn index_lists_path_urls_not_hashes() {
         let markdown = index(&sample_catalog());
-        assert!(markdown.starts_with("# Aarau Designsystem\n"));
+        assert!(markdown.starts_with("# Demo catalog\n"));
         assert!(markdown.contains("## Components\n"));
         assert!(markdown.contains("[Button / Ghost](/button-ghost/AGENTS.md)"));
         assert!(markdown.contains("A quiet action that sits next to a primary button."));

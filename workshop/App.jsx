@@ -6,13 +6,14 @@ import {
   IconMenu2,
 } from "./icons.js";
 import { Controls } from "./Controls.jsx";
+import { DocsPage } from "./DocsPage.jsx";
 import { IconButton } from "./IconButton.jsx";
 import { Inspector } from "./Inspector.jsx";
 import { Sidebar } from "./Sidebar.jsx";
 
 export function App({ initialBootstrap, staticMode }) {
   const [bootstrap, setBootstrap] = useState(initialBootstrap);
-  const [storyId, setStoryId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const [values, setValues] = useState({});
   const [mode, setMode] = useState(() => localStorage.getItem("schublade:theme") || "light");
   const [viewport, setViewport] = useState("desktop");
@@ -28,16 +29,23 @@ export function App({ initialBootstrap, staticMode }) {
   const previewReady = useRef(false);
   const pendingRender = useRef(null);
   const isStatic = useRef(staticMode || Boolean(initialBootstrap?.static));
-  const storyIdRef = useRef(storyId);
+  const selectedIdRef = useRef(selectedId);
   const valuesRef = useRef(values);
-  storyIdRef.current = storyId;
+  selectedIdRef.current = selectedId;
   valuesRef.current = values;
 
+  const pages = bootstrap?.catalog.pages ?? [];
   const stories = bootstrap?.catalog.stories ?? [];
-  const story = useMemo(
-    () => stories.find((item) => item.id === storyId) ?? null,
-    [stories, storyId]
+  const navItems = useMemo(() => [...pages, ...stories], [pages, stories]);
+  const page = useMemo(
+    () => pages.find((item) => item.id === selectedId) ?? null,
+    [pages, selectedId]
   );
+  const story = useMemo(
+    () => stories.find((item) => item.id === selectedId) ?? null,
+    [stories, selectedId]
+  );
+  const isDocs = Boolean(page);
   const catalogName = bootstrap?.brand?.name || bootstrap?.catalog.name || "";
   const logoUrl = bootstrap?.brand?.logo || null;
 
@@ -140,10 +148,23 @@ export function App({ initialBootstrap, staticMode }) {
   const selectStory = useCallback(
     (id, writeHash, nextBootstrap = bootstrap) => {
       if (!nextBootstrap) return;
+      const nextPage = (nextBootstrap.catalog.pages || []).find((item) => item.id === id);
+      if (nextPage) {
+        setSelectedId(id);
+        setValues({});
+        setCode("");
+        setStatus(null);
+        setError(null);
+        if (writeHash) {
+          const hash = `#/${id}`;
+          if (location.hash !== hash) history.replaceState(null, "", hash);
+        }
+        return;
+      }
       const nextStory = nextBootstrap.catalog.stories.find((item) => item.id === id);
       if (!nextStory) return;
       const nextValues = defaultsFor(nextStory);
-      setStoryId(id);
+      setSelectedId(id);
       setValues(nextValues);
       if (writeHash) {
         const hash = `#/${id}`;
@@ -155,7 +176,7 @@ export function App({ initialBootstrap, staticMode }) {
   );
 
   const showEmptyCatalog = useCallback((nextBootstrap) => {
-    setStoryId(null);
+    setSelectedId(null);
     setValues({});
     setCode("");
     setStatus("This catalog has no stories yet.");
@@ -167,21 +188,36 @@ export function App({ initialBootstrap, staticMode }) {
       isStatic.current = Boolean(next.static);
       setBootstrap(next);
       document.title = `${next.catalog.name} · Schublade`;
+      const nextPages = next.catalog.pages || [];
       const nextStories = next.catalog.stories;
-      if (!nextStories.length) {
+      if (!nextPages.length && !nextStories.length) {
         showEmptyCatalog(next);
         return;
       }
       const requested = storyIdFromHash();
       const fallback =
-        nextStories.find((item) => item.id === "avatar-group")?.id || nextStories[0].id;
-      const previousId = storyIdRef.current;
+        nextStories.find((item) => item.id === "avatar-group")?.id ||
+        nextPages[0]?.id ||
+        nextStories[0]?.id;
+      const previousId = selectedIdRef.current;
       const previousValues = valuesRef.current;
+      const known = (id) =>
+        nextPages.some((item) => item.id === id) ||
+        nextStories.some((item) => item.id === id);
       const nextId = keepSelection
-        ? nextStories.find((item) => item.id === previousId)?.id ||
-          requested ||
-          fallback
+        ? (known(previousId) && previousId) || requested || fallback
         : requested || fallback;
+      const nextPage = nextPages.find((item) => item.id === nextId);
+      if (nextPage) {
+        setSelectedId(nextPage.id);
+        setValues({});
+        setCode("");
+        setStatus(null);
+        const hash = `#/${nextPage.id}`;
+        if (location.hash !== hash) history.replaceState(null, "", hash);
+        configurePreview(next);
+        return;
+      }
       const nextStory = nextStories.find((item) => item.id === nextId);
       const nextValues = {};
       for (const control of nextStory.controls) {
@@ -191,7 +227,7 @@ export function App({ initialBootstrap, staticMode }) {
           Object.prototype.hasOwnProperty.call(previousValues, control.id);
         nextValues[control.id] = keep ? previousValues[control.id] : control.default;
       }
-      setStoryId(nextStory.id);
+      setSelectedId(nextStory.id);
       setValues(nextValues);
       const hash = `#/${nextStory.id}`;
       if (location.hash !== hash) history.replaceState(null, "", hash);
@@ -265,12 +301,12 @@ export function App({ initialBootstrap, staticMode }) {
 
   useEffect(() => {
     const onHash = () => {
-      if (!bootstrap || !stories.length) return;
-      selectStory(storyIdFromHash() || stories[0].id, false);
+      if (!bootstrap || !navItems.length) return;
+      selectStory(storyIdFromHash() || navItems[0].id, false);
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, [bootstrap, selectStory, stories]);
+  }, [bootstrap, selectStory, navItems]);
 
   useEffect(() => {
     const onMessage = (event) => {
@@ -310,12 +346,12 @@ export function App({ initialBootstrap, staticMode }) {
   }, [mode]);
 
   function stepStory(delta) {
-    if (!stories.length) return;
+    if (!navItems.length) return;
     const index = Math.max(
       0,
-      stories.findIndex((item) => item.id === storyId)
+      navItems.findIndex((item) => item.id === selectedId)
     );
-    const next = stories[(index + delta + stories.length) % stories.length];
+    const next = navItems[(index + delta + navItems.length) % navItems.length];
     selectStory(next.id, true);
   }
 
@@ -332,42 +368,45 @@ export function App({ initialBootstrap, staticMode }) {
   function updateValue(id, next) {
     const merged = { ...values, [id]: next };
     setValues(merged);
-    if (bootstrap && storyId) refresh(bootstrap, storyId, merged);
+    if (bootstrap && story) refresh(bootstrap, selectedId, merged);
   }
 
   const emptyDescription =
-    "This catalog is empty. Add *.stories.jsx / *.stories.js files or [[stories]] in catalog.toml. The workshop reloads when those files change.";
+    "This catalog is empty. Add *.stories.jsx / *.stories.js files, [[stories]] in catalog.toml, or docs/*.mdx token pages. The workshop reloads when those files change.";
 
   return (
-    <div className="app">
+    <div className={`app${isDocs ? " is-docs" : ""}`}>
       <Sidebar
         catalogName={catalogName}
         logoUrl={logoUrl}
+        pages={pages}
         stories={stories}
-        storyId={storyId}
+        selectedId={selectedId}
         onSelect={(id) => selectStory(id, true)}
         open={navOpen}
         onClose={closeDrawers}
       />
-      <div className="stage">
+      <div className={`stage${isDocs ? " is-docs" : ""}`}>
         <header className="stage-head">
           <div className="stage-nav">
             <IconButton
-              label="Previous story"
-              disabled={!stories.length}
+              label="Previous"
+              disabled={!navItems.length}
               onClick={() => stepStory(-1)}
             >
               <IconChevronLeft size={18} stroke={1.6} />
             </IconButton>
             <IconButton
-              label="Next story"
-              disabled={!stories.length}
+              label="Next"
+              disabled={!navItems.length}
               onClick={() => stepStory(1)}
             >
               <IconChevronRight size={18} stroke={1.6} />
             </IconButton>
           </div>
-          <h1 className="story-title">{story ? story.title : stories.length ? "Loading" : "No stories"}</h1>
+          <h1 className="story-title">
+            {page ? page.title : story ? story.title : navItems.length ? "Loading" : "No stories"}
+          </h1>
           <div className="stage-actions">
             <button
               type="button"
@@ -380,57 +419,67 @@ export function App({ initialBootstrap, staticMode }) {
               <IconMenu2 size={16} stroke={1.6} />
               Stories
             </button>
-            <button
-              type="button"
-              className="text-btn mobile-only"
-              onClick={() => {
-                setNavOpen(false);
-                setControlsOpen((open) => !open);
-              }}
-            >
-              <IconAdjustmentsHorizontal size={16} stroke={1.6} />
-              Controls
-            </button>
+            {isDocs ? null : (
+              <button
+                type="button"
+                className="text-btn mobile-only"
+                onClick={() => {
+                  setNavOpen(false);
+                  setControlsOpen((open) => !open);
+                }}
+              >
+                <IconAdjustmentsHorizontal size={16} stroke={1.6} />
+                Controls
+              </button>
+            )}
           </div>
         </header>
-        <div className="canvas-wrap">
-          <div className="canvas-frame" data-viewport={viewport} id="canvas-frame">
-            <iframe
-              ref={previewRef}
-              id="preview"
-              title="Isolated component preview"
-              sandbox="allow-scripts"
-              src={isStatic.current ? "./preview.html" : "/preview"}
-            />
-            {status ? (
-              <p className="canvas-status" id="canvas-status">
-                {status}
-              </p>
-            ) : null}
+        {isDocs ? (
+          <DocsPage page={page} tokens={bootstrap?.tokens} />
+        ) : (
+          <div className="canvas-wrap">
+            <div className="canvas-frame" data-viewport={viewport} id="canvas-frame">
+              <iframe
+                ref={previewRef}
+                id="preview"
+                title="Isolated component preview"
+                sandbox="allow-scripts"
+                src={isStatic.current ? "./preview.html" : "/preview"}
+              />
+              {status ? (
+                <p className="canvas-status" id="canvas-status">
+                  {status}
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
-        {!stories.length && !error ? (
+        )}
+        {!navItems.length && !error ? (
           <p className="stage-empty">{emptyDescription}</p>
         ) : null}
-        <Inspector
-          tab={tab}
-          onTabChange={setTab}
-          code={code}
-          copied={copied}
-          onCopy={copyUsage}
-          viewport={viewport}
-          onViewport={setViewport}
-          mode={mode}
-          onMode={setMode}
-          a11y={a11y}
-        />
+        {isDocs ? null : (
+          <Inspector
+            tab={tab}
+            onTabChange={setTab}
+            code={code}
+            copied={copied}
+            onCopy={copyUsage}
+            viewport={viewport}
+            onViewport={setViewport}
+            mode={mode}
+            onMode={setMode}
+            a11y={a11y}
+          />
+        )}
       </div>
-      <Controls
-        story={story}
-        values={values}
-        onChange={updateValue}
-        open={controlsOpen}
-      />
+      {isDocs ? null : (
+        <Controls
+          story={story}
+          values={values}
+          onChange={updateValue}
+          open={controlsOpen}
+        />
+      )}
       <div
         className="scrim"
         hidden={!navOpen && !controlsOpen}

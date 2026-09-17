@@ -7,12 +7,13 @@ import {
   IconMenu2
 } from "./icons.js";
 import { Controls } from "./Controls.js";
+import { DocsPage } from "./DocsPage.js";
 import { IconButton } from "./IconButton.js";
 import { Inspector } from "./Inspector.js";
 import { Sidebar } from "./Sidebar.js";
 function App({ initialBootstrap, staticMode }) {
   const [bootstrap, setBootstrap] = useState(initialBootstrap);
-  const [storyId, setStoryId] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   const [values, setValues] = useState({});
   const [mode, setMode] = useState(() => localStorage.getItem("schublade:theme") || "light");
   const [viewport, setViewport] = useState("desktop");
@@ -28,15 +29,22 @@ function App({ initialBootstrap, staticMode }) {
   const previewReady = useRef(false);
   const pendingRender = useRef(null);
   const isStatic = useRef(staticMode || Boolean(initialBootstrap?.static));
-  const storyIdRef = useRef(storyId);
+  const selectedIdRef = useRef(selectedId);
   const valuesRef = useRef(values);
-  storyIdRef.current = storyId;
+  selectedIdRef.current = selectedId;
   valuesRef.current = values;
+  const pages = bootstrap?.catalog.pages ?? [];
   const stories = bootstrap?.catalog.stories ?? [];
-  const story = useMemo(
-    () => stories.find((item) => item.id === storyId) ?? null,
-    [stories, storyId]
+  const navItems = useMemo(() => [...pages, ...stories], [pages, stories]);
+  const page = useMemo(
+    () => pages.find((item) => item.id === selectedId) ?? null,
+    [pages, selectedId]
   );
+  const story = useMemo(
+    () => stories.find((item) => item.id === selectedId) ?? null,
+    [stories, selectedId]
+  );
+  const isDocs = Boolean(page);
   const catalogName = bootstrap?.brand?.name || bootstrap?.catalog.name || "";
   const logoUrl = bootstrap?.brand?.logo || null;
   const closeDrawers = useCallback(() => {
@@ -132,10 +140,23 @@ function App({ initialBootstrap, staticMode }) {
   const selectStory = useCallback(
     (id, writeHash, nextBootstrap = bootstrap) => {
       if (!nextBootstrap) return;
+      const nextPage = (nextBootstrap.catalog.pages || []).find((item) => item.id === id);
+      if (nextPage) {
+        setSelectedId(id);
+        setValues({});
+        setCode("");
+        setStatus(null);
+        setError(null);
+        if (writeHash) {
+          const hash = `#/${id}`;
+          if (location.hash !== hash) history.replaceState(null, "", hash);
+        }
+        return;
+      }
       const nextStory = nextBootstrap.catalog.stories.find((item) => item.id === id);
       if (!nextStory) return;
       const nextValues = defaultsFor(nextStory);
-      setStoryId(id);
+      setSelectedId(id);
       setValues(nextValues);
       if (writeHash) {
         const hash = `#/${id}`;
@@ -146,7 +167,7 @@ function App({ initialBootstrap, staticMode }) {
     [bootstrap, defaultsFor, refresh]
   );
   const showEmptyCatalog = useCallback((nextBootstrap) => {
-    setStoryId(null);
+    setSelectedId(null);
     setValues({});
     setCode("");
     setStatus("This catalog has no stories yet.");
@@ -157,23 +178,36 @@ function App({ initialBootstrap, staticMode }) {
       isStatic.current = Boolean(next.static);
       setBootstrap(next);
       document.title = `${next.catalog.name} \xB7 Schublade`;
+      const nextPages = next.catalog.pages || [];
       const nextStories = next.catalog.stories;
-      if (!nextStories.length) {
+      if (!nextPages.length && !nextStories.length) {
         showEmptyCatalog(next);
         return;
       }
       const requested = storyIdFromHash();
-      const fallback = nextStories.find((item) => item.id === "avatar-group")?.id || nextStories[0].id;
-      const previousId = storyIdRef.current;
+      const fallback = nextStories.find((item) => item.id === "avatar-group")?.id || nextPages[0]?.id || nextStories[0]?.id;
+      const previousId = selectedIdRef.current;
       const previousValues = valuesRef.current;
-      const nextId = keepSelection ? nextStories.find((item) => item.id === previousId)?.id || requested || fallback : requested || fallback;
+      const known = (id) => nextPages.some((item) => item.id === id) || nextStories.some((item) => item.id === id);
+      const nextId = keepSelection ? known(previousId) && previousId || requested || fallback : requested || fallback;
+      const nextPage = nextPages.find((item) => item.id === nextId);
+      if (nextPage) {
+        setSelectedId(nextPage.id);
+        setValues({});
+        setCode("");
+        setStatus(null);
+        const hash2 = `#/${nextPage.id}`;
+        if (location.hash !== hash2) history.replaceState(null, "", hash2);
+        configurePreview(next);
+        return;
+      }
       const nextStory = nextStories.find((item) => item.id === nextId);
       const nextValues = {};
       for (const control of nextStory.controls) {
         const keep = keepSelection && previousId === nextStory.id && Object.prototype.hasOwnProperty.call(previousValues, control.id);
         nextValues[control.id] = keep ? previousValues[control.id] : control.default;
       }
-      setStoryId(nextStory.id);
+      setSelectedId(nextStory.id);
       setValues(nextValues);
       const hash = `#/${nextStory.id}`;
       if (location.hash !== hash) history.replaceState(null, "", hash);
@@ -237,12 +271,12 @@ function App({ initialBootstrap, staticMode }) {
   }, [applyBootstrap, bootstrap]);
   useEffect(() => {
     const onHash = () => {
-      if (!bootstrap || !stories.length) return;
-      selectStory(storyIdFromHash() || stories[0].id, false);
+      if (!bootstrap || !navItems.length) return;
+      selectStory(storyIdFromHash() || navItems[0].id, false);
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, [bootstrap, selectStory, stories]);
+  }, [bootstrap, selectStory, navItems]);
   useEffect(() => {
     const onMessage = (event) => {
       const message = event.data;
@@ -279,12 +313,12 @@ function App({ initialBootstrap, staticMode }) {
     }
   }, [mode]);
   function stepStory(delta) {
-    if (!stories.length) return;
+    if (!navItems.length) return;
     const index = Math.max(
       0,
-      stories.findIndex((item) => item.id === storyId)
+      navItems.findIndex((item) => item.id === selectedId)
     );
-    const next = stories[(index + delta + stories.length) % stories.length];
+    const next = navItems[(index + delta + navItems.length) % navItems.length];
     selectStory(next.id, true);
   }
   async function copyUsage() {
@@ -299,30 +333,31 @@ function App({ initialBootstrap, staticMode }) {
   function updateValue(id, next) {
     const merged = { ...values, [id]: next };
     setValues(merged);
-    if (bootstrap && storyId) refresh(bootstrap, storyId, merged);
+    if (bootstrap && story) refresh(bootstrap, selectedId, merged);
   }
-  const emptyDescription = "This catalog is empty. Add *.stories.jsx / *.stories.js files or [[stories]] in catalog.toml. The workshop reloads when those files change.";
-  return /* @__PURE__ */ jsxs("div", { className: "app", children: [
+  const emptyDescription = "This catalog is empty. Add *.stories.jsx / *.stories.js files, [[stories]] in catalog.toml, or docs/*.mdx token pages. The workshop reloads when those files change.";
+  return /* @__PURE__ */ jsxs("div", { className: `app${isDocs ? " is-docs" : ""}`, children: [
     /* @__PURE__ */ jsx(
       Sidebar,
       {
         catalogName,
         logoUrl,
+        pages,
         stories,
-        storyId,
+        selectedId,
         onSelect: (id) => selectStory(id, true),
         open: navOpen,
         onClose: closeDrawers
       }
     ),
-    /* @__PURE__ */ jsxs("div", { className: "stage", children: [
+    /* @__PURE__ */ jsxs("div", { className: `stage${isDocs ? " is-docs" : ""}`, children: [
       /* @__PURE__ */ jsxs("header", { className: "stage-head", children: [
         /* @__PURE__ */ jsxs("div", { className: "stage-nav", children: [
           /* @__PURE__ */ jsx(
             IconButton,
             {
-              label: "Previous story",
-              disabled: !stories.length,
+              label: "Previous",
+              disabled: !navItems.length,
               onClick: () => stepStory(-1),
               children: /* @__PURE__ */ jsx(IconChevronLeft, { size: 18, stroke: 1.6 })
             }
@@ -330,14 +365,14 @@ function App({ initialBootstrap, staticMode }) {
           /* @__PURE__ */ jsx(
             IconButton,
             {
-              label: "Next story",
-              disabled: !stories.length,
+              label: "Next",
+              disabled: !navItems.length,
               onClick: () => stepStory(1),
               children: /* @__PURE__ */ jsx(IconChevronRight, { size: 18, stroke: 1.6 })
             }
           )
         ] }),
-        /* @__PURE__ */ jsx("h1", { className: "story-title", children: story ? story.title : stories.length ? "Loading" : "No stories" }),
+        /* @__PURE__ */ jsx("h1", { className: "story-title", children: page ? page.title : story ? story.title : navItems.length ? "Loading" : "No stories" }),
         /* @__PURE__ */ jsxs("div", { className: "stage-actions", children: [
           /* @__PURE__ */ jsxs(
             "button",
@@ -354,7 +389,7 @@ function App({ initialBootstrap, staticMode }) {
               ]
             }
           ),
-          /* @__PURE__ */ jsxs(
+          isDocs ? null : /* @__PURE__ */ jsxs(
             "button",
             {
               type: "button",
@@ -371,7 +406,7 @@ function App({ initialBootstrap, staticMode }) {
           )
         ] })
       ] }),
-      /* @__PURE__ */ jsx("div", { className: "canvas-wrap", children: /* @__PURE__ */ jsxs("div", { className: "canvas-frame", "data-viewport": viewport, id: "canvas-frame", children: [
+      isDocs ? /* @__PURE__ */ jsx(DocsPage, { page, tokens: bootstrap?.tokens }) : /* @__PURE__ */ jsx("div", { className: "canvas-wrap", children: /* @__PURE__ */ jsxs("div", { className: "canvas-frame", "data-viewport": viewport, id: "canvas-frame", children: [
         /* @__PURE__ */ jsx(
           "iframe",
           {
@@ -384,8 +419,8 @@ function App({ initialBootstrap, staticMode }) {
         ),
         status ? /* @__PURE__ */ jsx("p", { className: "canvas-status", id: "canvas-status", children: status }) : null
       ] }) }),
-      !stories.length && !error ? /* @__PURE__ */ jsx("p", { className: "stage-empty", children: emptyDescription }) : null,
-      /* @__PURE__ */ jsx(
+      !navItems.length && !error ? /* @__PURE__ */ jsx("p", { className: "stage-empty", children: emptyDescription }) : null,
+      isDocs ? null : /* @__PURE__ */ jsx(
         Inspector,
         {
           tab,
@@ -401,7 +436,7 @@ function App({ initialBootstrap, staticMode }) {
         }
       )
     ] }),
-    /* @__PURE__ */ jsx(
+    isDocs ? null : /* @__PURE__ */ jsx(
       Controls,
       {
         story,
