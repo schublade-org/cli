@@ -20,10 +20,12 @@ assert.equal(
   "Default,Ghost,Disabled"
 );
 assert.ok(stories.some((story) => story.section === "Foundations" && story.controls.length === 0));
-assert.equal(bootstrap.catalog.pages.length, 2);
+assert.equal(bootstrap.catalog.pages.length, 3);
 assert.equal(bootstrap.catalog.pages[0].id, "colors");
+assert.equal(bootstrap.catalog.pages[2].id, "tokens");
 assert.equal(bootstrap.tokens.colors.length, 5);
 assert.ok(bootstrap.tokens.typography.styles.some((style) => style.id === "display-xl"));
+assert.ok(bootstrap.tokens.groups.some((group) => group.id === "spacing"));
 
 for (const story of stories) {
   assert.ok(story.id && story.title && story.item && story.section);

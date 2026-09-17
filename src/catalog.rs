@@ -51,6 +51,12 @@ pub enum PageBlock {
         #[serde(skip_serializing_if = "Option::is_none")]
         source: Option<TokenSource>,
     },
+    Tokens {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        family: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        source: Option<TokenSource>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

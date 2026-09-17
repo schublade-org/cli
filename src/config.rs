@@ -21,7 +21,7 @@ pub struct AppConfig {
     /// Directory to walk for docs/token `*.mdx` pages. Relative to the config file.
     #[serde(default)]
     pub docs: Option<PathBuf>,
-    /// Token adapters (manual + CSS). Figma/Paper MCP are sketched only.
+    /// Token adapters (manual + Tailwind CSS). Figma/Paper MCP are sketched only.
     #[serde(default)]
     pub tokens: TokensConfig,
     #[serde(default)]

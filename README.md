@@ -220,7 +220,7 @@ If `NPM_TOKEN` is absent, GitHub Release tarballs still go up. Those archives ar
 - **Native a11y** — a small DOM checker in the preview iframe. Enable, disable, or drop rules in `schublade.toml`.
 - **AGENTS.md** — one renderer writes `GET /AGENTS.md`, `GET /{id}/AGENTS.md`, and the same paths from `schublade build`. Content is catalog usage + controls, not source dumps or hash URLs.
 - **Demo stories** — Accordion, Avatar group, Badge, Button (Default / Ghost / Disabled), Chip.
-- **Docs / tokens** — `*.mdx` pages for color scales and typography. Tokens come from `schublade.toml` (manual) and/or a CSS custom-property file. CSF + `catalog.toml` stay the story source of truth.
+- **Docs / tokens** — `*.mdx` pages for color scales, typography, and other token tables. Tokens come from `schublade.toml` (manual) and/or a Tailwind theme CSS file. CSF + `catalog.toml` stay the story source of truth.
 
 ## Configure
 
@@ -233,7 +233,7 @@ docs = "./docs"            # optional; walk for docs/token *.mdx pages
 logo = "./logo.svg"        # optional workshop wordmark
 favicon = "./favicon.svg"  # optional; copied into `schublade build` output
 
-# Token adapters 3 (manual) and 4 (CSS). 1 Figma MCP and 2 Paper MCP are sketched only.
+# Token adapters 3 (manual) and 4 (Tailwind CSS). 1 Figma MCP and 2 Paper MCP are sketched only.
 [tokens]
 css = "./tokens.css"
 
@@ -252,6 +252,33 @@ dark = "dark"
 enabled = true
 rules = ["image-alt", "button-name", "link-name", "label", "control-name"]
 ```
+
+Adapter 4 is Tailwind-only. It classifies known `@theme` prefixes and ignores unknown `--foo` names. There is no `--font-size-*` prefix — font size is `--text-*`. `--text-*` is also overloaded (size, color, align/wrap skip, `--text-shadow*`). The prefix map:
+
+| Prefix | Family |
+| --- | --- |
+| `--color-*` | colors (`{palette}-{step}` when the last segment is numeric) |
+| `--text-*` | typography size, text color, or skip |
+| `--text-*--line-height` | pairs with a `--text-*` size |
+| `--text-shadow*` | text-shadow |
+| `--font-*` | font family |
+| `--font-weight-*` | font-weight |
+| `--leading-*` | line-height |
+| `--tracking-*` | letter-spacing |
+| `--spacing*` | spacing |
+| `--radius*` | radius |
+| `--shadow-*` | box-shadow |
+| `--inset-shadow-*` | inset-shadow |
+| `--drop-shadow-*` | drop-shadow |
+| `--blur-*` | blur |
+| `--perspective-*` | perspective |
+| `--aspect-*` | aspect-ratio |
+| `--ease-*` | easing |
+| `--animate-*` | animation |
+| `--breakpoint-*` | breakpoints |
+| `--container-*` | containers |
+
+See [`src/css_tokens.rs`](src/css_tokens.rs) and [`examples/tailwind-tokens/`](examples/tailwind-tokens/).
 
 A relative `catalog` or `stories` path is resolved against the config file’s directory. `serve` reloads catalog, stories, and theme/a11y config in place; host/port changes still need a restart. The Avatar group story uses a built-in renderer; HTML stories interpolate `{{control}}` tokens.
 

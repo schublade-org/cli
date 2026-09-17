@@ -10,9 +10,10 @@
 //!    `schublade.toml`, and/or MDX `<ColorScale steps={{ … }} />` props.
 //!    When no `*.mdx` exists, the resolved set is rendered as Colors /
 //!    Typography preset pages.
-//! 4. **CSS file** (implemented) — walk custom properties in `tokens.css`
-//!    (`[tokens] css = "./tokens.css"`), the same class of source walk CSF
-//!    uses today. No JS toolchain for `serve` / `build`.
+//! 4. **CSS file** (implemented, Tailwind-only) — `[tokens] css = "./theme.css"`
+//!    reads Tailwind `@theme` / compiled theme variables. Prefix map lives in
+//!    `css_tokens.rs`. Not a generic custom-property parser. No JS toolchain
+//!    for `serve` / `build`.
 //!
 //! CSF + `catalog.toml` stay the story source of truth. MDX is docs/token
 //! pages only — not a second story format.
@@ -37,6 +38,16 @@ pub struct TokenSet {
     pub colors: Vec<ColorScale>,
     #[serde(default)]
     pub typography: TypographyTokens,
+    /// Other Tailwind families: spacing, radius, shadow, and the rest.
+    #[serde(default)]
+    pub groups: Vec<TokenGroup>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokenGroup {
+    pub id: String,
+    pub name: String,
+    pub rows: Vec<TokenRow>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -89,7 +100,7 @@ pub struct TokenRow {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TokensConfig {
-    /// Adapter 4: CSS custom-property file, relative to schublade.toml.
+    /// Adapter 4: Tailwind theme CSS file, relative to schublade.toml.
     #[serde(default)]
     pub css: Option<PathBuf>,
     /// Adapter 3: color scales written in schublade.toml.
@@ -153,6 +164,9 @@ impl TokenSet {
         for row in other.typography.roles {
             upsert_row(&mut self.typography.roles, row);
         }
+        for group in other.groups {
+            upsert_group(&mut self.groups, group);
+        }
     }
 }
 
@@ -166,10 +180,7 @@ impl TokensConfig {
     pub fn from_manual(&self) -> TokenSet {
         let mut set = TokenSet::default();
         for scale in &self.colors {
-            let id = scale
-                .id
-                .clone()
-                .unwrap_or_else(|| slug(&scale.name));
+            let id = scale.id.clone().unwrap_or_else(|| slug(&scale.name));
             set.colors.push(ColorScale {
                 id: id.clone(),
                 name: scale.name.clone(),
@@ -178,7 +189,8 @@ impl TokensConfig {
             });
         }
         for style in &self.typography.styles {
-            let (group, label) = style_names(&style.id, style.group.as_deref(), style.label.as_deref());
+            let (group, label) =
+                style_names(&style.id, style.group.as_deref(), style.label.as_deref());
             set.typography.styles.push(TypeStyle {
                 id: style.id.clone(),
                 label,
@@ -208,7 +220,7 @@ impl TokensConfig {
     }
 }
 
-/// Colors / Typography pages when tokens exist and no MDX was discovered.
+/// Colors / Typography / other-family pages when tokens exist and no MDX was discovered.
 pub fn preset_pages(tokens: &TokenSet) -> Vec<Page> {
     let mut pages = Vec::new();
     if !tokens.colors.is_empty() {
@@ -232,6 +244,21 @@ pub fn preset_pages(tokens: &TokenSet) -> Vec<Page> {
             blocks: vec![PageBlock::Typography { source: None }],
         });
     }
+    for group in &tokens.groups {
+        if group.rows.is_empty() {
+            continue;
+        }
+        pages.push(Page {
+            id: group.id.clone(),
+            title: group.name.clone(),
+            section: "Foundations".into(),
+            description: format!("{} tokens from the configured token adapters.", group.name),
+            blocks: vec![PageBlock::Tokens {
+                family: Some(group.id.clone()),
+                source: None,
+            }],
+        });
+    }
     pages
 }
 
@@ -253,10 +280,12 @@ pub fn steps_from_map(
 }
 
 pub fn sort_steps(steps: &mut [ColorStep]) {
-    steps.sort_by(|left, right| match (parse_step(&left.step), parse_step(&right.step)) {
-        (Some(a), Some(b)) => a.cmp(&b),
-        _ => left.step.cmp(&right.step),
-    });
+    steps.sort_by(
+        |left, right| match (parse_step(&left.step), parse_step(&right.step)) {
+            (Some(a), Some(b)) => a.cmp(&b),
+            _ => left.step.cmp(&right.step),
+        },
+    );
 }
 
 pub fn parse_step(step: &str) -> Option<i32> {
@@ -265,18 +294,14 @@ pub fn parse_step(step: &str) -> Option<i32> {
 
 pub fn style_names(id: &str, group: Option<&str>, label: Option<&str>) -> (String, String) {
     let (auto_group, item) = split_type_id(id);
-    let group = group
-        .map(str::to_string)
-        .unwrap_or(auto_group);
-    let label = label
-        .map(str::to_string)
-        .unwrap_or_else(|| {
-            if item.is_empty() {
-                group.clone()
-            } else {
-                format!("{group} / {item}")
-            }
-        });
+    let group = group.map(str::to_string).unwrap_or(auto_group);
+    let label = label.map(str::to_string).unwrap_or_else(|| {
+        if item.is_empty() {
+            group.clone()
+        } else {
+            format!("{group} / {item}")
+        }
+    });
     (group, label)
 }
 
@@ -340,6 +365,16 @@ fn upsert_row(rows: &mut Vec<TokenRow>, incoming: TokenRow) {
     }
 }
 
+fn upsert_group(groups: &mut Vec<TokenGroup>, incoming: TokenGroup) {
+    if let Some(existing) = groups.iter_mut().find(|group| group.id == incoming.id) {
+        for row in incoming.rows {
+            upsert_row(&mut existing.rows, row);
+        }
+    } else {
+        groups.push(incoming);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -385,10 +420,24 @@ value = "Inter, sans-serif"
             }],
             source: TokenSource::Css,
         });
+        set.groups.push(TokenGroup {
+            id: "spacing".into(),
+            name: "Spacing".into(),
+            rows: vec![TokenRow {
+                token: "--spacing-4".into(),
+                value: "1rem".into(),
+                source: TokenSource::Css,
+            }],
+        });
         let pages = preset_pages(&set);
-        assert_eq!(pages.len(), 1);
+        assert_eq!(pages.len(), 2);
         assert_eq!(pages[0].id, "colors");
         assert_eq!(pages[0].title, "Colors");
+        assert_eq!(pages[1].id, "spacing");
+        assert!(matches!(
+            &pages[1].blocks[0],
+            PageBlock::Tokens { family, .. } if family.as_deref() == Some("spacing")
+        ));
     }
 
     #[test]
@@ -408,6 +457,7 @@ value = "Inter, sans-serif"
                 source: TokenSource::Manual,
             }],
             typography: TypographyTokens::default(),
+            groups: Vec::new(),
         });
         assert_eq!(set.colors.len(), 1);
         assert_eq!(set.colors[0].name, "Ink override");

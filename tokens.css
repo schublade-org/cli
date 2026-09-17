@@ -1,6 +1,6 @@
-/* Design tokens loaded by adapter 4 (CSS custom-property walk). */
+/* Adapter 4: Tailwind theme variables. Prefix map lives in src/css_tokens.rs. */
 
-:root {
+@theme {
   --color-yellow-50: #fffbeb;
   --color-yellow-100: #fef3c7;
   --color-yellow-200: #fde68a;
@@ -49,57 +49,32 @@
   --color-orange-900: #7c2d12;
   --color-orange-950: #431407;
 
-  --font-size-display-xl: 4.5rem;
-  --line-height-display-xl: 1.05;
-  --type-display-xl: var(--font-size-display-xl) / var(--line-height-display-xl);
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1.05;
+  --text-display-lg: 3.75rem;
+  --text-display-lg--line-height: 1.05;
+  --text-display-md: 3rem;
+  --text-display-md--line-height: 1.08;
+  --text-display-sm: 2.5rem;
+  --text-display-sm--line-height: 1.1;
+  --text-display-xs: 2rem;
+  --text-display-xs--line-height: 1.15;
+  --text-display-2xs: 1.75rem;
+  --text-display-2xs--line-height: 1.2;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.5;
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.5;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.45;
+  --text-label-md: 0.875rem;
+  --text-label-md--line-height: 1.35;
+  --text-label-sm: 0.8125rem;
+  --text-label-sm--line-height: 1.35;
+  --text-article-md: 1rem;
+  --text-article-md--line-height: 1.6;
+  --text-article-italic: 1rem;
+  --text-article-italic--line-height: 1.6;
 
-  --font-size-display-lg: 3.75rem;
-  --line-height-display-lg: 1.05;
-  --type-display-lg: var(--font-size-display-lg) / var(--line-height-display-lg);
-
-  --font-size-display-md: 3rem;
-  --line-height-display-md: 1.08;
-  --type-display-md: var(--font-size-display-md) / var(--line-height-display-md);
-
-  --font-size-display-sm: 2.5rem;
-  --line-height-display-sm: 1.1;
-  --type-display-sm: var(--font-size-display-sm) / var(--line-height-display-sm);
-
-  --font-size-display-xs: 2rem;
-  --line-height-display-xs: 1.15;
-  --type-display-xs: var(--font-size-display-xs) / var(--line-height-display-xs);
-
-  --font-size-display-2xs: 1.75rem;
-  --line-height-display-2xs: 1.2;
-  --type-display-2xs: var(--font-size-display-2xs) / var(--line-height-display-2xs);
-
-  --font-size-body-lg: 1.125rem;
-  --line-height-body-lg: 1.5;
-  --type-body-lg: var(--font-size-body-lg) / var(--line-height-body-lg);
-
-  --font-size-body-md: 1rem;
-  --line-height-body-md: 1.5;
-  --type-body-md: var(--font-size-body-md) / var(--line-height-body-md);
-
-  --font-size-body-sm: 0.875rem;
-  --line-height-body-sm: 1.45;
-  --type-body-sm: var(--font-size-body-sm) / var(--line-height-body-sm);
-
-  --font-size-label-md: 0.875rem;
-  --line-height-label-md: 1.35;
-  --type-label-md: var(--font-size-label-md) / var(--line-height-label-md);
-
-  --font-size-label-sm: 0.8125rem;
-  --line-height-label-sm: 1.35;
-  --type-label-sm: var(--font-size-label-sm) / var(--line-height-label-sm);
-
-  --font-size-article-md: 1rem;
-  --line-height-article-md: 1.6;
-  --type-article-md: var(--font-size-article-md) / var(--line-height-article-md);
-
-  --font-size-article-italic: 1rem;
-  --line-height-article-italic: 1.6;
-  --type-article-italic: var(--font-size-article-italic) / var(--line-height-article-italic);
-
-  --font-family-sans: "Inter Variable", Inter, sans-serif;
+  --font-sans: "Inter Variable", Inter, sans-serif;
 }

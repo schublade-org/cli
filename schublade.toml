@@ -13,7 +13,7 @@ docs = "./docs"
 # 1. Figma MCP — sketch only, not implemented
 # 2. Paper MCP — sketch only, not implemented
 # 3. Manual — [[tokens.colors]] / [tokens.typography] and MDX component props
-# 4. CSS file — custom properties, walked like CSF source
+# 4. CSS file — Tailwind @theme / compiled theme variables only
 [tokens]
 css = "./tokens.css"
 

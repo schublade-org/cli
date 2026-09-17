@@ -1,6 +1,7 @@
 import { ColorScales } from "./ColorScales.jsx";
+import { TokenGroups } from "./TokenGroups.jsx";
 import { TypographyDocs } from "./TypographyDocs.jsx";
-import { filterBySource } from "./tokens.js";
+import { filterBySource, filterGroups } from "./tokens.js";
 
 export function DocsPage({ page, tokens }) {
   const colors = tokens?.colors ?? [];
@@ -40,6 +41,13 @@ export function DocsPage({ page, tokens }) {
                   families: filterBySource(typography.families || [], block.source),
                   roles: filterBySource(typography.roles || [], block.source),
                 }}
+              />
+            );
+          case "tokens":
+            return (
+              <TokenGroups
+                key={index}
+                groups={filterGroups(tokens?.groups ?? [], block.family, block.source)}
               />
             );
           default: {

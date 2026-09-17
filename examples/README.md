@@ -36,3 +36,4 @@ The default catalog at the repo root is unchanged. Use `npx schublade serve` or 
 | [overflow](overflow/) | Avatar overflow and long copy | 47306 |
 | [many-controls](many-controls/) | A story with a full control panel | 47307 |
 | [story-files](story-files/) | CSF `*.stories.jsx` / `*.stories.js` next to HTML and React components | 47308 |
+| [tailwind-tokens](tailwind-tokens/) | Tailwind `@theme` CSS token families (colors, `--text-*`, spacing, radius, shadow, …) | 47309 |

@@ -840,6 +840,50 @@ mod tests {
             .any(|style| style.id == "display-xl"));
         assert!(loaded.tokens_css.is_some());
         assert_eq!(loaded.docs_files.len(), 2);
+        assert!(
+            loaded
+                .tokens
+                .typography
+                .roles
+                .iter()
+                .any(|row| row.token == "--text-display-xl"),
+            "{:?}",
+            loaded
+                .tokens
+                .typography
+                .roles
+                .iter()
+                .map(|row| &row.token)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn tailwind_tokens_example_loads_theme_families() {
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let (config, path) =
+            AppConfig::load(Some(&manifest.join("examples/tailwind-tokens/schublade.toml"))).unwrap();
+        let loaded = load_workshop(
+            &config,
+            Some(&manifest.join("examples/tailwind-tokens/catalog.toml")),
+            None,
+            path.as_deref(),
+        )
+        .unwrap();
+        assert_eq!(loaded.catalog.name, "Tailwind tokens");
+        assert!(loaded.catalog.page("colors").is_some());
+        assert!(loaded.catalog.page("typography").is_some());
+        assert!(loaded.catalog.page("tokens").is_some());
+        assert!(loaded.tokens.colors.iter().any(|scale| scale.id == "yellow"));
+        assert!(loaded.tokens.colors.iter().any(|scale| scale.id == "text"));
+        assert!(loaded.tokens.groups.iter().any(|group| group.id == "spacing"));
+        assert!(loaded.tokens.groups.iter().any(|group| group.id == "radius"));
+        assert!(loaded.tokens.groups.iter().any(|group| group.id == "shadow"));
+        assert!(!loaded
+            .tokens
+            .groups
+            .iter()
+            .any(|group| group.rows.iter().any(|row| row.token == "--ignored")));
     }
 
     #[tokio::test]

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { filterBySource, groupTypeStyles, typeRoleRows } from "./tokens.js";
+import { filterBySource, filterGroups, groupTypeStyles, typeRoleRows } from "./tokens.js";
 
 const styles = [
   { id: "display-xl", label: "Display / xl", group: "Display", fontSize: "4.5rem" },
@@ -19,7 +19,18 @@ const roles = typeRoleRows({
   roles: [],
   families: [],
 });
-assert.equal(roles[0].token, "--type-display-xl");
+assert.equal(roles[0].token, "--text-display-xl");
 assert.equal(roles[0].value, "4.5rem");
+
+const tokenGroups = filterGroups(
+  [
+    { id: "spacing", name: "Spacing", rows: [{ token: "--spacing-4", value: "1rem", source: "css" }] },
+    { id: "radius", name: "Radius", rows: [{ token: "--radius-md", value: "0.375rem", source: "manual" }] },
+  ],
+  "spacing",
+  "css"
+);
+assert.equal(tokenGroups.length, 1);
+assert.equal(tokenGroups[0].id, "spacing");
 
 console.log("workshop/tokens.test.mjs ok");

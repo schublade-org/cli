@@ -1,7 +1,8 @@
 import { jsx } from "react/jsx-runtime";
 import { ColorScales } from "./ColorScales.js";
+import { TokenGroups } from "./TokenGroups.js";
 import { TypographyDocs } from "./TypographyDocs.js";
-import { filterBySource } from "./tokens.js";
+import { filterBySource, filterGroups } from "./tokens.js";
 function DocsPage({ page, tokens }) {
   const colors = tokens?.colors ?? [];
   const typography = tokens?.typography ?? { styles: [], families: [], roles: [] };
@@ -30,6 +31,14 @@ function DocsPage({ page, tokens }) {
               families: filterBySource(typography.families || [], block.source),
               roles: filterBySource(typography.roles || [], block.source)
             }
+          },
+          index
+        );
+      case "tokens":
+        return /* @__PURE__ */ jsx(
+          TokenGroups,
+          {
+            groups: filterGroups(tokens?.groups ?? [], block.family, block.source)
           },
           index
         );

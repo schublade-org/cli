@@ -1,116 +1,133 @@
-//! Adapter 4: load tokens from a CSS file by walking custom properties.
+//! Adapter 4: Tailwind theme variables from a CSS file.
 //!
-//! Same idea as the CSF source walk: comments and strings are skipped, then
-//! `--name: value;` declarations are collected. Not a full CSS engine.
+//! Tailwind-only for this MVP. Declarations are collected, then **only**
+//! known Tailwind prefixes are classified. Unknown `--foo` names are ignored
+//! — this is not a generic design-token map.
+//!
+//! Works on `@theme { … }` source and on compiled theme output (`:root`).
+//!
+//! # Prefix map
+//!
+//! | Prefix | Family | Notes |
+//! | --- | --- | --- |
+//! | `--color-*` | colors | `{palette}-{step}` when the last segment is numeric; else one swatch |
+//! | `--text-*` | typography size, text color, or skip | see special cases below |
+//! | `--text-*--line-height` | pairs with `--text-*` size | Tailwind size modifier, not a style of its own |
+//! | `--text-shadow`, `--text-shadow-*` | text-shadow | not a font size |
+//! | `--font-*` | font family | `--font-sans`, `--font-serif`, … |
+//! | `--font-weight-*` | font-weight | not a family |
+//! | `--leading-*` | line-height | |
+//! | `--tracking-*` | letter-spacing | |
+//! | `--spacing`, `--spacing-*` | spacing | |
+//! | `--radius`, `--radius-*` | radius | |
+//! | `--shadow-*` | box-shadow | |
+//! | `--inset-shadow-*` | inset-shadow | |
+//! | `--drop-shadow-*` | drop-shadow | |
+//! | `--blur-*` | blur | |
+//! | `--perspective-*` | perspective | |
+//! | `--aspect-*` | aspect-ratio | |
+//! | `--ease-*` | easing | |
+//! | `--animate-*` | animation | |
+//! | `--breakpoint-*` | breakpoints | |
+//! | `--container-*` | containers | |
+//!
+//! `--text-*` special cases (size vs color vs other utilities):
+//!
+//! * `--text-{id}--line-height` → line-height companion for a size
+//! * `--text-shadow*` → text-shadow family (above)
+//! * alignment / wrap utilities (`left`, `center`, `right`, `justify`,
+//!   `start`, `end`, `balance`, `pretty`, `wrap`, `nowrap`, `ellipsis`,
+//!   `clip`) → ignored
+//! * value looks like a color (`#`, `oklch(`, `var(--color-…)` …) → color
+//!   scale `text`
+//! * value looks like a length (`rem`, `px`, `calc(` …) → font size
+//! * anything else → ignored
+//!
+//! There is no `--font-size-*` prefix in Tailwind. Font size is `--text-*`.
 
 use std::collections::BTreeMap;
 
 use crate::tokens::{
-    sort_steps, style_names, ColorScale, ColorStep, TokenRow, TokenSet, TokenSource, TypeStyle,
+    sort_steps, style_names, ColorScale, ColorStep, TokenGroup, TokenRow, TokenSet, TokenSource,
+    TypeStyle,
 };
+
+const TEXT_UTILITY_SKIP: &[&str] = &[
+    "left", "center", "right", "justify", "start", "end", "balance", "pretty", "wrap", "nowrap",
+    "ellipsis", "clip",
+];
 
 pub fn load_css_file(path: &std::path::Path) -> Result<TokenSet, String> {
     let raw = std::fs::read_to_string(path)
         .map_err(|error| format!("could not read {}: {error}", path.display()))?;
-    parse_css_tokens(&raw)
+    parse_tailwind_tokens(&raw)
 }
 
 pub fn parse_css_tokens(source: &str) -> Result<TokenSet, String> {
+    parse_tailwind_tokens(source)
+}
+
+pub fn parse_tailwind_tokens(source: &str) -> Result<TokenSet, String> {
     let decls = collect_custom_properties(source);
     let resolved: BTreeMap<String, String> = resolve_all(&decls);
 
     let mut colors: Vec<ColorScale> = Vec::new();
-    let mut font_sizes: BTreeMap<String, String> = BTreeMap::new();
+    let mut sizes: BTreeMap<String, String> = BTreeMap::new();
     let mut line_heights: BTreeMap<String, String> = BTreeMap::new();
     let mut styles: Vec<TypeStyle> = Vec::new();
     let mut families = Vec::new();
     let mut roles = Vec::new();
+    let mut groups: Vec<TokenGroup> = Vec::new();
 
     for (name, raw_value) in &decls {
         let value = resolved.get(name).unwrap_or(raw_value).clone();
-        let token = format!("--{name}");
-
-        if let Some((family, step)) = color_parts(name) {
-            if let Some(scale) = colors.iter_mut().find(|scale| scale.id == family) {
-                scale.steps.push(ColorStep {
-                    step,
+        match classify(name, &value) {
+            Kind::Skip => {}
+            Kind::Color { family, step } => {
+                push_color(&mut colors, &family, &step, &value);
+            }
+            Kind::TextSize { id } => {
+                sizes.insert(id, value);
+            }
+            Kind::TextLineHeight { id } => {
+                line_heights.insert(id, value);
+            }
+            Kind::FontFamily { id } => {
+                families.push(TokenRow {
+                    token: format!("--font-{id}"),
                     value,
-                    token,
-                });
-            } else {
-                colors.push(ColorScale {
-                    id: family.clone(),
-                    name: crate::tokens::humanize(&family),
-                    steps: vec![ColorStep {
-                        step,
-                        value,
-                        token,
-                    }],
                     source: TokenSource::Css,
                 });
             }
-            continue;
-        }
-
-        if let Some(id) = name.strip_prefix("font-family-") {
-            families.push(TokenRow {
-                token,
-                value,
-                source: TokenSource::Css,
-            });
-            let _ = id;
-            continue;
-        }
-
-        if let Some(id) = name.strip_prefix("font-size-") {
-            font_sizes.insert(id.to_string(), value);
-            continue;
-        }
-
-        if let Some(id) = name.strip_prefix("line-height-") {
-            line_heights.insert(id.to_string(), value);
-            continue;
-        }
-
-        if let Some(id) = name.strip_prefix("type-") {
-            let id = id.strip_suffix("-size").unwrap_or(id).to_string();
-            roles.push(TokenRow {
-                token,
-                value: raw_value.clone(),
-                source: TokenSource::Css,
-            });
-            if let Some((font_size, line_height)) = split_type_pair(&value) {
-                let (group, label) = style_names(&id, None, None);
-                upsert_style(
-                    &mut styles,
-                    TypeStyle {
-                        font_style: italic_from_id(&id),
-                        id,
-                        label,
-                        group,
-                        font_size,
-                        line_height,
-                        font_family: None,
-                        source: TokenSource::Css,
-                    },
-                );
+            Kind::Group { id, token } => {
+                push_group_row(&mut groups, id, token, value);
             }
-            continue;
         }
     }
 
-    for (id, font_size) in font_sizes {
-        let line_height = line_heights.get(&id).cloned().unwrap_or_else(|| "1.2".into());
+    for (id, font_size) in sizes {
+        let line_height = line_heights.get(&id).cloned().unwrap_or_default();
+        let token = format!("--text-{id}");
+        let display = if line_height.is_empty() {
+            font_size.clone()
+        } else {
+            format!("{font_size} / {line_height}")
+        };
+        roles.push(TokenRow {
+            token,
+            value: display,
+            source: TokenSource::Css,
+        });
         if !styles.iter().any(|style| style.id == id) {
             let (group, label) = style_names(&id, None, None);
             styles.push(TypeStyle {
+                font_style: italic_from_id(&id),
                 id,
                 label,
                 group,
                 font_size,
                 line_height,
                 font_family: None,
-                font_style: None,
                 source: TokenSource::Css,
             });
         }
@@ -124,20 +141,182 @@ pub fn parse_css_tokens(source: &str) -> Result<TokenSet, String> {
     set.typography.styles = styles;
     set.typography.families = families;
     set.typography.roles = roles;
+    set.groups = groups;
     Ok(set)
 }
 
-fn color_parts(name: &str) -> Option<(String, String)> {
-    let rest = name.strip_prefix("color-")?;
-    let (family, step) = rest.rsplit_once('-')?;
-    if family.is_empty() || parse_step_name(step).is_none() {
-        return None;
-    }
-    Some((family.to_string(), step.to_string()))
+enum Kind {
+    Color { family: String, step: String },
+    TextSize { id: String },
+    TextLineHeight { id: String },
+    FontFamily { id: String },
+    Group { id: &'static str, token: String },
+    Skip,
 }
 
-fn parse_step_name(step: &str) -> Option<i32> {
-    step.parse().ok()
+fn classify(name: &str, value: &str) -> Kind {
+    if let Some(rest) = strip_exact_or_dash(name, "text-shadow") {
+        return Kind::Group {
+            id: "text-shadow",
+            token: format!("--text-shadow{}", suffix_token(rest)),
+        };
+    }
+    if let Some(rest) = strip_exact_or_dash(name, "inset-shadow") {
+        return Kind::Group {
+            id: "inset-shadow",
+            token: format!("--inset-shadow{}", suffix_token(rest)),
+        };
+    }
+    if let Some(rest) = strip_exact_or_dash(name, "drop-shadow") {
+        return Kind::Group {
+            id: "drop-shadow",
+            token: format!("--drop-shadow{}", suffix_token(rest)),
+        };
+    }
+    if let Some(rest) = name.strip_prefix("font-weight-") {
+        return Kind::Group {
+            id: "font-weight",
+            token: format!("--font-weight-{rest}"),
+        };
+    }
+    if let Some(rest) = name.strip_prefix("text-") {
+        return classify_text(rest, value);
+    }
+    if let Some(rest) = name.strip_prefix("color-") {
+        return classify_color(rest);
+    }
+    if let Some(rest) = name.strip_prefix("font-") {
+        if rest.is_empty() {
+            return Kind::Skip;
+        }
+        return Kind::FontFamily {
+            id: rest.to_string(),
+        };
+    }
+    for (prefix, family) in GROUP_PREFIXES {
+        if let Some(rest) = strip_exact_or_dash(name, prefix) {
+            return Kind::Group {
+                id: family,
+                token: format!("--{prefix}{}", suffix_token(rest)),
+            };
+        }
+    }
+    Kind::Skip
+}
+
+/// Tailwind families that are a flat token table (not colors or type styles).
+const GROUP_PREFIXES: &[(&str, &str)] = &[
+    ("leading", "leading"),
+    ("tracking", "tracking"),
+    ("spacing", "spacing"),
+    ("radius", "radius"),
+    ("shadow", "shadow"),
+    ("blur", "blur"),
+    ("perspective", "perspective"),
+    ("aspect", "aspect"),
+    ("ease", "ease"),
+    ("animate", "animate"),
+    ("breakpoint", "breakpoint"),
+    ("container", "container"),
+];
+
+fn classify_text(rest: &str, value: &str) -> Kind {
+    if let Some(id) = rest.strip_suffix("--line-height") {
+        if id.is_empty() {
+            return Kind::Skip;
+        }
+        return Kind::TextLineHeight { id: id.to_string() };
+    }
+    if TEXT_UTILITY_SKIP.contains(&rest) {
+        return Kind::Skip;
+    }
+    if looks_like_color(value) {
+        return Kind::Color {
+            family: "text".into(),
+            step: rest.to_string(),
+        };
+    }
+    if looks_like_size(value) {
+        return Kind::TextSize {
+            id: rest.to_string(),
+        };
+    }
+    Kind::Skip
+}
+
+fn classify_color(rest: &str) -> Kind {
+    if rest.is_empty() {
+        return Kind::Skip;
+    }
+    if let Some((family, step)) = rest.rsplit_once('-') {
+        if !family.is_empty() && step.parse::<i32>().is_ok() {
+            return Kind::Color {
+                family: family.to_string(),
+                step: step.to_string(),
+            };
+        }
+    }
+    Kind::Color {
+        family: rest.to_string(),
+        step: "DEFAULT".into(),
+    }
+}
+
+fn looks_like_color(value: &str) -> bool {
+    let value = value.trim();
+    let lower = value.to_ascii_lowercase();
+    lower.starts_with('#')
+        || lower.starts_with("rgb(")
+        || lower.starts_with("rgba(")
+        || lower.starts_with("hsl(")
+        || lower.starts_with("hsla(")
+        || lower.starts_with("oklch(")
+        || lower.starts_with("oklab(")
+        || lower.starts_with("lab(")
+        || lower.starts_with("lch(")
+        || lower.starts_with("hwb(")
+        || lower.starts_with("color(")
+        || lower.starts_with("color-mix(")
+        || lower.starts_with("var(--color-")
+}
+
+fn looks_like_size(value: &str) -> bool {
+    let value = value.trim();
+    let lower = value.to_ascii_lowercase();
+    if lower.starts_with("calc(")
+        || lower.starts_with("clamp(")
+        || lower.starts_with("min(")
+        || lower.starts_with("max(")
+    {
+        return true;
+    }
+    if lower.starts_with("var(--text-") || lower.starts_with("var(--spacing") {
+        return true;
+    }
+    const UNITS: &[&str] = &[
+        "rem", "em", "px", "pt", "pc", "cm", "mm", "in", "%", "ch", "ex", "ic", "cap", "lh", "rlh",
+        "vw", "vh", "vmin", "vmax", "svw", "svh", "lvw", "lvh", "dvw", "dvh",
+    ];
+    UNITS.iter().any(|unit| {
+        lower
+            .strip_suffix(unit)
+            .is_some_and(|head| head.ends_with(|ch: char| ch.is_ascii_digit() || ch == '.'))
+    })
+}
+
+fn strip_exact_or_dash<'a>(name: &'a str, prefix: &str) -> Option<&'a str> {
+    if name == prefix {
+        return Some("");
+    }
+    name.strip_prefix(prefix)?.strip_prefix('-')
+}
+
+fn suffix_token(rest: &str) -> String {
+    if rest.is_empty() {
+        String::new()
+    } else {
+        format!("-{rest}")
+    }
 }
 
 fn italic_from_id(id: &str) -> Option<String> {
@@ -148,22 +327,49 @@ fn italic_from_id(id: &str) -> Option<String> {
     }
 }
 
-fn upsert_style(styles: &mut Vec<TypeStyle>, incoming: TypeStyle) {
-    if let Some(existing) = styles.iter_mut().find(|style| style.id == incoming.id) {
-        *existing = incoming;
+fn push_color(colors: &mut Vec<ColorScale>, family: &str, step: &str, value: &str) {
+    let token = if step == "DEFAULT" {
+        format!("--color-{family}")
+    } else if family == "text" {
+        format!("--text-{step}")
     } else {
-        styles.push(incoming);
+        format!("--color-{family}-{step}")
+    };
+    if let Some(scale) = colors.iter_mut().find(|scale| scale.id == family) {
+        scale.steps.push(ColorStep {
+            step: step.to_string(),
+            value: value.to_string(),
+            token,
+        });
+        return;
     }
+    colors.push(ColorScale {
+        id: family.to_string(),
+        name: crate::tokens::humanize(family),
+        steps: vec![ColorStep {
+            step: step.to_string(),
+            value: value.to_string(),
+            token,
+        }],
+        source: TokenSource::Css,
+    });
 }
 
-fn split_type_pair(value: &str) -> Option<(String, String)> {
-    let (size, height) = value.split_once(" / ")?;
-    let size = size.trim();
-    let height = height.trim();
-    if size.is_empty() || height.is_empty() {
-        return None;
+fn push_group_row(groups: &mut Vec<TokenGroup>, id: &'static str, token: String, value: String) {
+    let row = TokenRow {
+        token,
+        value,
+        source: TokenSource::Css,
+    };
+    if let Some(group) = groups.iter_mut().find(|group| group.id == id) {
+        group.rows.push(row);
+        return;
     }
-    Some((size.to_string(), height.to_string()))
+    groups.push(TokenGroup {
+        id: id.to_string(),
+        name: crate::tokens::humanize(id),
+        rows: vec![row],
+    });
 }
 
 fn collect_custom_properties(source: &str) -> Vec<(String, String)> {
@@ -282,7 +488,6 @@ fn strip_comments(source: &str) -> String {
         }
         if ch == b'"' || ch == b'\'' {
             quote = Some(ch);
-            out.push(ch as char);
             i += 1;
             continue;
         }
@@ -369,45 +574,102 @@ mod tests {
     use super::*;
 
     const SAMPLE: &str = r#"
-/* workshop tokens — adapter 4 */
-:root {
+@theme {
   --color-yellow-50: #fffbeb;
   --color-yellow-500: #f59e0b;
-  --color-yellow-950: #451a03;
-  --font-size-display-xl: 4.5rem;
-  --line-height-display-xl: 1.05;
-  --type-display-xl: var(--font-size-display-xl) / var(--line-height-display-xl);
-  --font-family-sans: "Inter Variable", sans-serif;
-  --ignored: 1px; /* not a token we classify */
+  --color-white: #ffffff;
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1.05;
+  --text-primary: oklch(0.2 0 0);
+  --text-center: center;
+  --text-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.1);
+  --font-sans: "Inter Variable", sans-serif;
+  --font-weight-bold: 700;
+  --leading-tight: 1.25;
+  --tracking-wide: 0.025em;
+  --spacing: 0.25rem;
+  --spacing-4: 1rem;
+  --radius-md: 0.375rem;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --inset-shadow-sm: inset 0 1px 2px rgb(0 0 0 / 0.05);
+  --drop-shadow-sm: 0 1px 1px rgb(0 0 0 / 0.05);
+  --blur-sm: 8px;
+  --perspective-dramatic: 100px;
+  --aspect-video: 16 / 9;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --animate-spin: spin 1s linear infinite;
+  --breakpoint-md: 48rem;
+  --container-3xl: 48rem;
+  --font-size-display-xl: 99rem;
+  --type-display-xl: ignored;
+  --ignored: 1px;
 }
 "#;
 
     #[test]
-    fn walks_custom_properties_into_scales_and_type() {
-        let set = parse_css_tokens(SAMPLE).unwrap();
-        assert_eq!(set.colors.len(), 1);
-        assert_eq!(set.colors[0].id, "yellow");
-        assert_eq!(set.colors[0].name, "Yellow");
-        assert_eq!(set.colors[0].source, TokenSource::Css);
-        assert_eq!(set.colors[0].steps.len(), 3);
-        assert_eq!(set.colors[0].steps[0].step, "50");
+    fn maps_tailwind_prefixes_and_ignores_the_rest() {
+        let set = parse_tailwind_tokens(SAMPLE).unwrap();
+        assert_eq!(
+            set.colors
+                .iter()
+                .map(|scale| scale.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["yellow", "white", "text"]
+        );
         assert_eq!(set.colors[0].steps[0].token, "--color-yellow-50");
+        assert_eq!(set.colors[1].steps[0].token, "--color-white");
+        assert_eq!(set.colors[1].steps[0].step, "DEFAULT");
+        assert_eq!(set.colors[2].steps[0].token, "--text-primary");
         assert_eq!(set.typography.styles.len(), 1);
         assert_eq!(set.typography.styles[0].id, "display-xl");
         assert_eq!(set.typography.styles[0].font_size, "4.5rem");
         assert_eq!(set.typography.styles[0].line_height, "1.05");
-        assert_eq!(set.typography.families[0].value, "\"Inter Variable\", sans-serif");
-        assert_eq!(
-            set.typography.roles[0].value,
-            "var(--font-size-display-xl) / var(--line-height-display-xl)"
-        );
+        assert_eq!(set.typography.roles[0].token, "--text-display-xl");
+        assert_eq!(set.typography.families[0].token, "--font-sans");
+        let group_ids: Vec<_> = set.groups.iter().map(|group| group.id.as_str()).collect();
+        for id in [
+            "leading",
+            "tracking",
+            "spacing",
+            "radius",
+            "shadow",
+            "inset-shadow",
+            "drop-shadow",
+            "blur",
+            "perspective",
+            "aspect",
+            "ease",
+            "animate",
+            "breakpoint",
+            "container",
+            "text-shadow",
+            "font-weight",
+        ] {
+            assert!(group_ids.contains(&id), "missing {id} in {group_ids:?}");
+        }
+        let spacing = set
+            .groups
+            .iter()
+            .find(|group| group.id == "spacing")
+            .unwrap();
+        assert!(spacing.rows.iter().any(|row| row.token == "--spacing"));
+        assert!(spacing.rows.iter().any(|row| row.token == "--spacing-4"));
+        assert!(!set
+            .typography
+            .styles
+            .iter()
+            .any(|style| style.font_size == "99rem"));
+        assert!(!set
+            .groups
+            .iter()
+            .any(|group| group.rows.iter().any(|row| row.token == "--ignored")));
     }
 
     #[test]
     fn skips_comments_and_quoted_semicolons() {
         let set = parse_css_tokens(
             r##"
-:root {
+@theme {
   /* --color-ghost-50: #fff; */
   --color-pink-100: "#ff;pink";
 }
@@ -417,5 +679,51 @@ mod tests {
         assert_eq!(set.colors.len(), 1);
         assert_eq!(set.colors[0].id, "pink");
         assert_eq!(set.colors[0].steps[0].value, "\"#ff;pink\"");
+    }
+
+    #[test]
+    fn example_theme_covers_tailwind_families() {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("examples/tailwind-tokens/theme.css");
+        let set = load_css_file(&path).unwrap();
+        assert!(set.colors.iter().any(|scale| scale.id == "yellow"));
+        assert!(set.colors.iter().any(|scale| scale.id == "white"));
+        assert!(set.colors.iter().any(|scale| scale.id == "text"));
+        assert!(set
+            .typography
+            .styles
+            .iter()
+            .any(|style| style.id == "display-xl"));
+        assert!(set
+            .typography
+            .families
+            .iter()
+            .any(|row| row.token == "--font-sans"));
+        assert!(!set
+            .typography
+            .styles
+            .iter()
+            .any(|style| style.font_size == "99rem"));
+        let ids: Vec<_> = set.groups.iter().map(|group| group.id.as_str()).collect();
+        for id in [
+            "spacing",
+            "radius",
+            "shadow",
+            "inset-shadow",
+            "drop-shadow",
+            "text-shadow",
+            "font-weight",
+            "leading",
+            "tracking",
+            "blur",
+            "perspective",
+            "aspect",
+            "ease",
+            "animate",
+            "breakpoint",
+            "container",
+        ] {
+            assert!(ids.contains(&id), "missing {id} in {ids:?}");
+        }
     }
 }

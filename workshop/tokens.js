@@ -3,6 +3,16 @@ export function filterBySource(items, source) {
   return items.filter((item) => item.source === source);
 }
 
+export function filterGroups(groups, family, source) {
+  return (groups || [])
+    .filter((group) => !family || group.id === family)
+    .map((group) => ({
+      ...group,
+      rows: filterBySource(group.rows || [], source),
+    }))
+    .filter((group) => group.rows.length);
+}
+
 export function groupTypeStyles(styles) {
   const groups = [];
   const byName = new Map();
@@ -28,7 +38,7 @@ export function typeRoleRows(typography) {
     return typography.roles;
   }
   return (typography.styles || []).map((style) => ({
-    token: `--type-${style.id}`,
+    token: `--text-${style.id}`,
     value: [style.fontSize, style.lineHeight].filter(Boolean).join(" / "),
     source: style.source,
   }));

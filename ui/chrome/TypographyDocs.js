@@ -2,6 +2,7 @@ import { jsx, jsxs } from "react/jsx-runtime";
 import { useMemo, useState } from "react";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { TokenTable } from "./TokenGroups.js";
 import { groupTypeStyles, typeRoleRows } from "./tokens.js";
 function TypographyDocs({ typography }) {
   const [view, setView] = useState("styles");
@@ -57,21 +58,6 @@ function TypeTokens({ roles, families }) {
   return /* @__PURE__ */ jsxs("div", { className: "type-tables", children: [
     roles.length ? /* @__PURE__ */ jsx(TokenTable, { title: "Type roles", rows: roles }) : null,
     families.length ? /* @__PURE__ */ jsx(TokenTable, { title: "Font family", rows: families }) : null
-  ] });
-}
-function TokenTable({ title, rows }) {
-  return /* @__PURE__ */ jsxs("section", { className: "token-table-wrap", children: [
-    /* @__PURE__ */ jsx("h3", { className: "token-table-title", children: title }),
-    /* @__PURE__ */ jsxs("table", { className: "token-table", children: [
-      /* @__PURE__ */ jsx("thead", { children: /* @__PURE__ */ jsxs("tr", { children: [
-        /* @__PURE__ */ jsx("th", { children: "Token" }),
-        /* @__PURE__ */ jsx("th", { children: "Value" })
-      ] }) }),
-      /* @__PURE__ */ jsx("tbody", { children: rows.map((row) => /* @__PURE__ */ jsxs("tr", { children: [
-        /* @__PURE__ */ jsx("td", { children: row.token }),
-        /* @__PURE__ */ jsx("td", { children: row.value })
-      ] }, row.token)) })
-    ] })
   ] });
 }
 export {

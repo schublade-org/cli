@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { TokenTable } from "./TokenGroups.jsx";
 import { groupTypeStyles, typeRoleRows } from "./tokens.js";
 
 export function TypographyDocs({ typography }) {
@@ -78,29 +79,5 @@ function TypeTokens({ roles, families }) {
         <TokenTable title="Font family" rows={families} />
       ) : null}
     </div>
-  );
-}
-
-function TokenTable({ title, rows }) {
-  return (
-    <section className="token-table-wrap">
-      <h3 className="token-table-title">{title}</h3>
-      <table className="token-table">
-        <thead>
-          <tr>
-            <th>Token</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.token}>
-              <td>{row.token}</td>
-              <td>{row.value}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
   );
 }

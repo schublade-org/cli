@@ -81,7 +81,10 @@ pub fn parse_mdx(source: &str, file_id: &str, tokens: &TokenSet) -> Result<Page,
         .get("id")
         .cloned()
         .unwrap_or_else(|| file_id.to_string());
-    let title = meta.get("title").cloned().unwrap_or_else(|| human_title(&id));
+    let title = meta
+        .get("title")
+        .cloned()
+        .unwrap_or_else(|| human_title(&id));
     let section = meta
         .get("section")
         .cloned()
@@ -102,7 +105,10 @@ fn split_frontmatter(source: &str) -> Result<(BTreeMap<String, String>, &str), S
     let Some(rest) = trimmed.strip_prefix("---") else {
         return Ok((BTreeMap::new(), trimmed));
     };
-    let rest = rest.strip_prefix('\n').or_else(|| rest.strip_prefix("\r\n")).unwrap_or(rest);
+    let rest = rest
+        .strip_prefix('\n')
+        .or_else(|| rest.strip_prefix("\r\n"))
+        .unwrap_or(rest);
     let close = rest
         .find("\n---")
         .or_else(|| rest.find("\r\n---"))
@@ -126,7 +132,11 @@ fn parse_frontmatter(raw: &str) -> BTreeMap<String, String> {
         let Some((key, value)) = line.split_once(':') else {
             continue;
         };
-        let value = value.trim().trim_matches('"').trim_matches('\'').to_string();
+        let value = value
+            .trim()
+            .trim_matches('"')
+            .trim_matches('\'')
+            .to_string();
         map.insert(key.trim().to_string(), value);
     }
     map
@@ -189,7 +199,13 @@ fn parse_heading(body: &str, start: usize) -> (PageBlock, usize) {
     if i < body.len() {
         i += 1;
     }
-    (PageBlock::Heading { level: level.max(1), text }, i)
+    (
+        PageBlock::Heading {
+            level: level.max(1),
+            text,
+        },
+        i,
+    )
 }
 
 fn parse_paragraph(body: &str, start: usize) -> (String, usize) {
@@ -399,8 +415,15 @@ fn component_block(
             scale: color_scale_from_props(&props, tokens)?,
         }),
         "Typography" | "TypeStyles" | "TokenTable" => Ok(PageBlock::Typography { source }),
+        "Tokens" => Ok(PageBlock::Tokens {
+            family: props
+                .get("family")
+                .and_then(Value::as_str)
+                .map(str::to_string),
+            source,
+        }),
         other => Err(format!(
-            "unknown MDX component <{other}> — use ColorScales, ColorScale, or Typography"
+            "unknown MDX component <{other}> — use ColorScales, ColorScale, Typography, or Tokens"
         )),
     }
 }
@@ -413,7 +436,10 @@ fn parse_source(value: &str) -> Result<TokenSource, String> {
     }
 }
 
-fn color_scale_from_props(props: &Map<String, Value>, tokens: &TokenSet) -> Result<ColorScale, String> {
+fn color_scale_from_props(
+    props: &Map<String, Value>,
+    tokens: &TokenSet,
+) -> Result<ColorScale, String> {
     let name = props
         .get("name")
         .and_then(Value::as_str)
@@ -469,6 +495,7 @@ mod tests {
                 source: TokenSource::Css,
             }],
             typography: crate::tokens::TypographyTokens::default(),
+            groups: Vec::new(),
         }
     }
 
@@ -512,6 +539,30 @@ section: Foundations
             other => panic!("{other:?}"),
         }
         assert!(matches!(page.blocks[2], PageBlock::Typography { .. }));
+    }
+
+    #[test]
+    fn parses_tokens_family_component() {
+        let page = parse_mdx(
+            r##"---
+id: tokens
+title: Tokens
+---
+
+<Tokens family="spacing" source="css" />
+"##,
+            "tokens",
+            &tokens(),
+        )
+        .unwrap();
+        assert_eq!(page.blocks.len(), 1);
+        match &page.blocks[0] {
+            PageBlock::Tokens { family, source } => {
+                assert_eq!(family.as_deref(), Some("spacing"));
+                assert_eq!(source.as_ref(), Some(&TokenSource::Css));
+            }
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

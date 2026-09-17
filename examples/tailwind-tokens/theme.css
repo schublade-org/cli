@@ -1,0 +1,61 @@
+/* Tailwind @theme source for adapter 4. Unknown --foo names are ignored. */
+
+@theme {
+  --color-yellow-50: #fffbeb;
+  --color-yellow-500: #f59e0b;
+  --color-yellow-900: #78350f;
+  --color-violet-50: #f5f3ff;
+  --color-violet-500: #8b5cf6;
+  --color-violet-900: #4c1d95;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1.05;
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.5;
+  --text-label-sm: 0.8125rem;
+  --text-label-sm--line-height: 1.35;
+  --text-primary: oklch(0.21 0.03 260);
+  --text-center: center;
+  --text-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.1);
+
+  --font-sans: "Inter Variable", Inter, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --tracking-tight: -0.025em;
+  --tracking-wide: 0.025em;
+
+  --spacing: 0.25rem;
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-4: 1rem;
+  --spacing-8: 2rem;
+
+  --radius: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-xl: 0.75rem;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px rgb(0 0 0 / 0.1);
+  --inset-shadow-sm: inset 0 1px 2px rgb(0 0 0 / 0.05);
+  --drop-shadow-sm: 0 1px 1px rgb(0 0 0 / 0.05);
+
+  --blur-sm: 8px;
+  --perspective-dramatic: 100px;
+  --aspect-video: 16 / 9;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --animate-spin: spin 1s linear infinite;
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --container-3xl: 48rem;
+
+  --font-size-display-xl: 99rem;
+  --type-display-xl: ignored;
+  --ignored: 1px;
+}

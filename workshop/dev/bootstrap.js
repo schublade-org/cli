@@ -246,6 +246,13 @@ export const bootstrap = {
         description: "Type roles from the CSS token file. Switch Styles and Tokens.",
         blocks: [{ type: "typography" }],
       },
+      {
+        id: "tokens",
+        title: "Tokens",
+        section: "Foundations",
+        description: "Other Tailwind theme families from the CSS token file.",
+        blocks: [{ type: "tokens" }],
+      },
     ],
   },
   tokens: mockTokens(),
@@ -317,13 +324,33 @@ function mockTokens() {
         type("article-italic", "Article / italic", "Article", "1rem", "1.6", { fontStyle: "italic" }),
       ],
       families: [
-        { token: "--font-family-sans", value: '"Inter Variable", Inter, sans-serif', source: "css" },
+        { token: "--font-sans", value: '"Inter Variable", Inter, sans-serif', source: "css" },
         { token: "--font-family-article", value: "Georgia, 'Times New Roman', serif", source: "manual" },
       ],
       roles: [
-        { token: "--type-display-xl", value: "var(--font-size-display-xl) / var(--line-height-display-xl)", source: "css" },
-        { token: "--type-body-md", value: "var(--font-size-body-md) / var(--line-height-body-md)", source: "css" },
+        { token: "--text-display-xl", value: "4.5rem / 1.05", source: "css" },
+        { token: "--text-body-md", value: "1rem / 1.5", source: "css" },
       ],
     },
+    groups: [
+      {
+        id: "spacing",
+        name: "Spacing",
+        rows: [
+          { token: "--spacing", value: "0.25rem", source: "css" },
+          { token: "--spacing-4", value: "1rem", source: "css" },
+        ],
+      },
+      {
+        id: "radius",
+        name: "Radius",
+        rows: [{ token: "--radius-md", value: "0.375rem", source: "css" }],
+      },
+      {
+        id: "shadow",
+        name: "Shadow",
+        rows: [{ token: "--shadow-sm", value: "0 1px 2px rgb(0 0 0 / 0.05)", source: "css" }],
+      },
+    ],
   };
 }
