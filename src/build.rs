@@ -189,8 +189,8 @@ fn write_static_site(
 
 pub(crate) fn rewrite_asset_urls(html: &str) -> String {
     html.replace("src=\"/preview\"", "src=\"./preview.html\"")
-        .replace("href=\"/", "href=\"./")
-        .replace("src=\"/", "src=\"./")
+        .replace("href=\"/", "href=\"./" )
+        .replace("src=\"/", "src=\"./" )
 }
 
 fn copy_brand_file(source: &Path, dest: &Path) -> Result<(), String> {
@@ -226,7 +226,7 @@ mod tests {
     #[test]
     fn rewrite_makes_assets_relative() {
         let html = rewrite_asset_urls(
-            r#"<link href="/workshop.css"><iframe src="/preview"><script src="/vendor/react.production.min.js"></script>"#,
+            r#"<link href=\"/workshop.css\"><iframe src=\"/preview\"><script src=\"/vendor/react.production.min.js\"></script>"#,
         );
         assert!(html.contains("./workshop.css"));
         assert!(html.contains("./preview.html"));
@@ -244,18 +244,18 @@ mod tests {
             r#"name = "Static kit"
 
 [[stories]]
-id = "button"
-title = "Button"
-section = "Components"
-description = "A button"
-template = "<button>{{label}}</button>"
-code = "<Button>{{label}}</Button>"
+    id = "button"
+    title = "Button"
+    section = "Components"
+    description = "A button"
+    template = "<button>{{label}}</button>"
+    code = "<Button>{{label}}</Button>"
 
 [[stories.controls]]
-kind = "text"
-id = "label"
-label = "Label"
-default = "Save"
+    kind = "text"
+    id = "label"
+    label = "Label"
+    default = "Save"
 "#,
         )
         .unwrap();
@@ -278,6 +278,7 @@ default = "Save"
         assert!(index.contains("./render.js"));
         assert!(index.contains("./chrome/main.js"));
         assert!(index.contains("type=\"importmap\""));
+        assert!(index.contains("@base-ui/react@1.8.0"));
         assert!(index.contains("./favicon.svg"));
         assert!(!index.contains("src=\"/preview\""));
         assert!(!index.contains("id=\"catalog-name\">Schublade<"));
@@ -323,7 +324,7 @@ default = "Save"
         .unwrap();
         std::fs::write(
             root.join("logo.svg"),
-            r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#111"/></svg>"##,
+            r##"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\"><rect width=\"16\" height=\"16\" fill=\"#111\"/></svg>"##,
         )
         .unwrap();
         std::fs::write(
