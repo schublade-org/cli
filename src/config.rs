@@ -23,6 +23,12 @@ pub struct AppConfig {
     pub theme: ThemeConfig,
     #[serde(default)]
     pub a11y: A11yConfig,
+    /// Workshop wordmark. Relative paths resolve against the config file directory.
+    #[serde(default)]
+    pub logo: Option<PathBuf>,
+    /// Favicon included in `serve` and `schublade build` output.
+    #[serde(default)]
+    pub favicon: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -220,6 +226,32 @@ impl AppConfig {
         }
         Ok(Some(resolved))
     }
+
+    pub fn resolve_logo_path(&self, config_path: Option<&Path>) -> Result<Option<PathBuf>, String> {
+        resolve_existing_optional(self.logo.as_deref(), config_path, "logo")
+    }
+
+    pub fn resolve_favicon_path(
+        &self,
+        config_path: Option<&Path>,
+    ) -> Result<Option<PathBuf>, String> {
+        resolve_existing_optional(self.favicon.as_deref(), config_path, "favicon")
+    }
+}
+
+fn resolve_existing_optional(
+    configured: Option<&Path>,
+    config_path: Option<&Path>,
+    label: &str,
+) -> Result<Option<PathBuf>, String> {
+    let Some(configured) = configured else {
+        return Ok(None);
+    };
+    let resolved = resolve_against(configured, config_path);
+    if !resolved.exists() {
+        return Err(format!("{label} not found: {}", resolved.display()));
+    }
+    Ok(Some(resolved))
 }
 
 impl ThemeTrigger {
@@ -410,6 +442,50 @@ mod tests {
         };
         let error = config.resolve_stories_path(None, None).unwrap_err();
         assert!(error.contains("stories directory not found"));
+    }
+
+    #[test]
+    fn brand_paths_are_relative_to_config_file() {
+        let dir = std::env::temp_dir().join("schublade-brand-rel");
+        std::fs::create_dir_all(&dir).unwrap();
+        let logo = dir.join("logo.svg");
+        let favicon = dir.join("favicon.svg");
+        std::fs::write(&logo, "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>").unwrap();
+        std::fs::write(&favicon, "<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>").unwrap();
+        let config_file = dir.join("schublade.toml");
+        std::fs::write(
+            &config_file,
+            "logo = \"./logo.svg\"\nfavicon = \"./favicon.svg\"\n",
+        )
+        .unwrap();
+
+        let (config, path) = AppConfig::load(Some(&config_file)).unwrap();
+        let resolved_logo = config
+            .resolve_logo_path(path.as_deref())
+            .unwrap()
+            .unwrap();
+        let resolved_favicon = config
+            .resolve_favicon_path(path.as_deref())
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            resolved_logo.canonicalize().unwrap(),
+            logo.canonicalize().unwrap()
+        );
+        assert_eq!(
+            resolved_favicon.canonicalize().unwrap(),
+            favicon.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
+    fn missing_logo_is_a_clear_error() {
+        let config = AppConfig {
+            logo: Some(PathBuf::from("./nope.svg")),
+            ..AppConfig::default()
+        };
+        let error = config.resolve_logo_path(None).unwrap_err();
+        assert!(error.contains("logo not found"), "{error}");
     }
 
     #[derive(Deserialize)]
