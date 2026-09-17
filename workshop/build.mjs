@@ -2,6 +2,8 @@ import { build } from "esbuild";
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+// Repo-author compile. Vite (`npm run dev:workshop`) is the HMR loop only.
+// This still writes committed ui/chrome/ that `schublade serve` embeds.
 const outdir = "ui/chrome";
 
 await build({
