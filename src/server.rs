@@ -881,6 +881,12 @@ mod tests {
         assert!(loaded.tokens.groups.iter().any(|group| group.id == "shadow"));
         assert!(!loaded
             .tokens
+            .typography
+            .families
+            .iter()
+            .any(|row| row.token.contains("font-size")));
+        assert!(!loaded
+            .tokens
             .groups
             .iter()
             .any(|group| group.rows.iter().any(|row| row.token == "--ignored")));

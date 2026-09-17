@@ -44,6 +44,7 @@
 //! * anything else → ignored
 //!
 //! There is no `--font-size-*` prefix in Tailwind. Font size is `--text-*`.
+//! A `--font-size-*` declaration is ignored so it cannot look like a family.
 
 use std::collections::BTreeMap;
 
@@ -184,6 +185,9 @@ fn classify(name: &str, value: &str) -> Kind {
     }
     if let Some(rest) = name.strip_prefix("color-") {
         return classify_color(rest);
+    }
+    if name == "font-size" || name.starts_with("font-size-") {
+        return Kind::Skip;
     }
     if let Some(rest) = name.strip_prefix("font-") {
         if rest.is_empty() {
@@ -627,6 +631,11 @@ mod tests {
         assert_eq!(set.typography.styles[0].line_height, "1.05");
         assert_eq!(set.typography.roles[0].token, "--text-display-xl");
         assert_eq!(set.typography.families[0].token, "--font-sans");
+        assert!(!set
+            .typography
+            .families
+            .iter()
+            .any(|row| row.token.contains("font-size")));
         let group_ids: Vec<_> = set.groups.iter().map(|group| group.id.as_str()).collect();
         for id in [
             "leading",
@@ -700,6 +709,11 @@ mod tests {
             .families
             .iter()
             .any(|row| row.token == "--font-sans"));
+        assert!(!set
+            .typography
+            .families
+            .iter()
+            .any(|row| row.token.contains("font-size")));
         assert!(!set
             .typography
             .styles
