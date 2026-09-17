@@ -199,9 +199,12 @@ impl StoryFile {
             .unwrap_or_else(|| default_code(&title, &controls));
 
         if self.stories.is_empty() {
+            let (group, item) = crate::catalog::nav_parts(&title);
             return Ok(vec![Story {
                 id: file_id,
                 title,
+                group,
+                item,
                 section,
                 description,
                 generator: self.generator,
@@ -232,9 +235,12 @@ impl StoryFile {
                 .title
                 .unwrap_or_else(|| format!("{} / {}", title, named.name));
             let story_description = named.description.unwrap_or_else(|| description.clone());
+            let (group, item) = crate::catalog::nav_parts(&story_title);
             out.push(Story {
                 id: story_id,
                 title: story_title,
+                group,
+                item,
                 section: section.clone(),
                 description: story_description,
                 generator: self.generator,
@@ -860,6 +866,10 @@ disabled = true
         assert_eq!(stories[0].id, "button");
         assert_eq!(stories[1].id, "button-disabled");
         assert_eq!(stories[0].title, "Button / Default");
+        assert_eq!(stories[0].group.as_deref(), Some("Button"));
+        assert_eq!(stories[0].item, "Default");
+        assert_eq!(stories[1].group.as_deref(), Some("Button"));
+        assert_eq!(stories[1].item, "Disabled");
         match &stories[1].controls.iter().find(|c| c.id() == "disabled") {
             Some(Control::Boolean { default, .. }) => assert!(*default),
             other => panic!("expected boolean, got {other:?}"),
