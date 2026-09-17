@@ -259,7 +259,7 @@ Rust 1.85 or newer (`rust-toolchain.toml` pins 1.85.0). Node 18+ is only require
 ```bash
 cargo test
 npm install
-npm run build:workshop   # rebuild ui/workshop.js after chrome edits
+npm run build:workshop   # compile workshop/*.jsx into ui/chrome/*.js
 npm run test:npm
 cargo run -- serve
 cargo run -- serve --config examples/story-files/schublade.toml
