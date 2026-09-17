@@ -484,9 +484,9 @@ select {
 }
 
 .controls-intro {
-  margin: 0 -22px 20px;
-  padding: 0 22px 16px;
-  border-bottom: 1px solid #e4e4e7;
+  margin: 0 0 20px;
+  padding: 0 0 16px;
+  border-bottom: 2px solid #c4c4c8;
 }
 
 .controls-desc {
