@@ -1,0 +1,24 @@
+workshop/index.html
+  s_5224d267af9c0b::t_31874bcdc93748 11
+ui/workshop.css
+  s_5224d267af9c0b::t_e465cf285f2e22 43
+  s_5224d267af9c0b::t_461f7ca4a05699 14-16,30-32,40-41,171,508-509,622,636,808-809
+ui/index.html
+  s_5224d267af9c0b::t_8cf16985de8d33 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fde92c3d10620488639e5b4cfe1c6a5e2b766927",
+  "prompts": {},
+  "sessions": {
+    "s_5224d267af9c0b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0af07-cab6-73a3-9d34-6c22dddbb4ec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "nick <n@nick.qa>"
+    }
+  }
+}
