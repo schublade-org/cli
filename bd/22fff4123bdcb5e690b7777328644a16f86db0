@@ -1,0 +1,19 @@
+src/catalog.rs
+  s_5224d267af9c0b::t_d468f565039131 577
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd22fff4123bdcb5e690b7777328644a16f86db0",
+  "prompts": {},
+  "sessions": {
+    "s_5224d267af9c0b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0af07-cab6-73a3-9d34-6c22dddbb4ec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "nick <n@nick.qa>"
+    }
+  }
+}
